@@ -29,9 +29,16 @@ show_help() {
     echo "  cleanup               Clean up cache and temporary files"
     echo "  help                  Show this help message"
     echo ""
+    echo "Device Options (for local-test, translategemma-fix):"
+    echo "  --cpu                 Force CPU-only mode (slower, no GPU)"
+    echo "  --mps, --metal        Force MPS/Metal mode (M1/M2/M3 Mac)"
+    echo "  --auto                Auto-detect best device (default)"
+    echo ""
     echo "Examples:"
     echo "  ./run-examples.sh verify-hf-token"
     echo "  ./run-examples.sh local-test"
+    echo "  ./run-examples.sh local-test --cpu"
+    echo "  ./run-examples.sh local-test --mps"
     echo "  ./run-examples.sh cleanup"
 }
 
@@ -108,16 +115,59 @@ cleanup_caches() {
     fi
 }
 
+# Function to parse device options
+parse_device_option() {
+    local device_option=""
+
+    for arg in "$@"; do
+        case "$arg" in
+            --cpu)
+                device_option="cpu"
+                ;;
+            --mps|--metal|--gpu)
+                device_option="mps"
+                ;;
+            --auto)
+                device_option="auto"
+                ;;
+        esac
+    done
+
+    echo "$device_option"
+}
+
 # Function to run example with post-execution cleanup option
 run_with_cleanup_option() {
     local script_name=$1
     shift
 
+    # Parse device option
+    local device=$(parse_device_option "$@")
+
+    # Set FORCE_DEVICE environment variable if specified
+    if [ -n "$device" ]; then
+        export FORCE_DEVICE="$device"
+        echo -e "${BLUE}🎯 Device mode: $device${NC}"
+        echo ""
+    fi
+
     echo -e "${BLUE}Running $script_name...${NC}"
     echo ""
 
-    # Run the script
-    uv run python "examples/${script_name}.py" "$@"
+    # Run the script (remove device options from args)
+    local clean_args=()
+    for arg in "$@"; do
+        case "$arg" in
+            --cpu|--mps|--metal|--gpu|--auto)
+                # Skip device options
+                ;;
+            *)
+                clean_args+=("$arg")
+                ;;
+        esac
+    done
+
+    uv run python "examples/${script_name}.py" "${clean_args[@]}"
 
     # Ask for cleanup after execution
     echo ""
@@ -180,13 +230,35 @@ fi
 case "$SCRIPT_NAME" in
     local-test|translategemma-fix)
         # Scripts that might benefit from cleanup afterward
+        # Also support device options
         run_with_cleanup_option "$SCRIPT_NAME" "${@:2}"
         ;;
     *)
-        # Other scripts run normally
+        # Other scripts run normally (but still support device options)
+        local device=$(parse_device_option "${@:2}")
+        if [ -n "$device" ]; then
+            export FORCE_DEVICE="$device"
+            echo -e "${BLUE}🎯 Device mode: $device${NC}"
+            echo ""
+        fi
+
         echo -e "${BLUE}Running $SCRIPT_NAME...${NC}"
         echo ""
-        uv run python "examples/${SCRIPT_NAME}.py" "${@:2}"
+
+        # Remove device options from args
+        local clean_args=()
+        for arg in "${@:2}"; do
+            case "$arg" in
+                --cpu|--mps|--metal|--gpu|--auto)
+                    # Skip device options
+                    ;;
+                *)
+                    clean_args+=("$arg")
+                    ;;
+            esac
+        done
+
+        uv run python "examples/${SCRIPT_NAME}.py" "${clean_args[@]}"
 
         # Show cleanup hint
         echo ""
