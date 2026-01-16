@@ -5,7 +5,13 @@ set -e
 # This script deploys the TranslateGemma API to Google Cloud Run with GPU support
 
 # Configuration
-export PROJECT_ID="${PROJECT_ID:-gde-jimmyliao-redeem}"
+# Set your GCP project ID
+if [ -z "$PROJECT_ID" ]; then
+    echo "Error: PROJECT_ID environment variable is not set"
+    echo "Please set it with: export PROJECT_ID=your-gcp-project-id"
+    exit 1
+fi
+
 export REGION="${REGION:-us-central1}"
 export SERVICE_NAME="${SERVICE_NAME:-translategemma-4b}"
 export IMAGE_NAME="gcr.io/${PROJECT_ID}/${SERVICE_NAME}"
