@@ -12,8 +12,12 @@ import sys
 import time
 import psutil
 import shutil
+import warnings
 from datetime import datetime
 from pathlib import Path
+
+# 抑制 transformers 的警告訊息
+warnings.filterwarnings("ignore", category=UserWarning, module="transformers")
 
 # 顏色代碼
 class Colors:
@@ -76,6 +80,49 @@ def print_error(message, detail=None):
 def print_warning(message):
     """顯示警告訊息"""
     print(f"{Colors.YELLOW}⚠️  {message}{Colors.NC}")
+
+def check_model_cache(model_id):
+    """檢查模型是否已經下載到快取"""
+    from huggingface_hub import scan_cache_dir
+
+    try:
+        cache_info = scan_cache_dir()
+
+        # 尋找模型
+        for repo in cache_info.repos:
+            if model_id in repo.repo_id:
+                # 計算模型大小
+                total_size = sum(revision.size_on_disk for revision in repo.revisions)
+                size_gb = total_size / (1024**3)
+
+                # 檢查是否有未完成的下載
+                incomplete_files = []
+                cache_path = Path.home() / ".cache" / "huggingface" / "hub"
+                model_cache_dir = cache_path / f"models--{model_id.replace('/', '--')}"
+
+                if model_cache_dir.exists():
+                    incomplete_files = list(model_cache_dir.rglob("*.incomplete"))
+
+                if incomplete_files:
+                    return {
+                        "cached": False,
+                        "partial": True,
+                        "size_gb": size_gb,
+                        "incomplete_count": len(incomplete_files)
+                    }
+                else:
+                    return {
+                        "cached": True,
+                        "partial": False,
+                        "size_gb": size_gb
+                    }
+
+        # 模型未找到
+        return {"cached": False, "partial": False, "size_gb": 0}
+
+    except Exception as e:
+        # 如果檢查失敗，假設未下載
+        return {"cached": False, "partial": False, "size_gb": 0, "error": str(e)}
 
 def load_env():
     """載入 .env 檔案"""
@@ -160,6 +207,10 @@ def test_translation():
         # 設定 transformers 日誌等級，減少不必要的警告
         os.environ["TRANSFORMERS_VERBOSITY"] = "error"
 
+        # 額外設定 logging level
+        import logging
+        logging.getLogger("transformers").setLevel(logging.ERROR)
+
         from transformers import AutoModelForCausalLM, AutoTokenizer
         import torch
 
@@ -171,12 +222,42 @@ def test_translation():
         tokenizer = AutoTokenizer.from_pretrained(MODEL_ID)
         print_success("Tokenizer 載入成功", f"詞彙表大小: {len(tokenizer):,}")
 
-        # 步驟 2: 載入模型（顯示記憶體和磁碟狀態）
+        # 步驟 2: 檢查模型快取並載入
         print()
-        print_step("4.2", "載入模型（可能需要幾分鐘，Hugging Face 會顯示下載進度）",
+        print_step("4.2", "檢查模型快取狀態", timestamp=True)
+
+        cache_status = check_model_cache(MODEL_ID)
+
+        if cache_status.get("cached"):
+            # 模型已完整下載
+            print_success("模型已在快取中",
+                         f"大小: {cache_status['size_gb']:.1f} GB, 無需重新下載")
+        elif cache_status.get("partial"):
+            # 有未完成的下載
+            print_warning(f"發現 {cache_status['incomplete_count']} 個未完成的下載")
+            print(f"   目前已下載: {cache_status['size_gb']:.1f} GB")
+            print(f"   建議先執行清理: ./run-examples.sh cleanup")
+        else:
+            # 模型未下載
+            print_warning("模型未下載，將從 Hugging Face 下載（約 8.6 GB）")
+
+            # 檢查磁碟空間是否足夠
+            disk = shutil.disk_usage("/")
+            free_gb = disk.free / (1024**3)
+
+            if free_gb < 10:
+                print_error(f"磁碟空間不足！僅剩 {free_gb:.1f} GB",
+                           "建議至少有 12 GB 可用空間")
+                print(f"   請執行: ./run-examples.sh cleanup")
+                return False
+
+        print()
+        print_step("4.2b", "載入模型到記憶體（可能需要幾分鐘）",
                    timestamp=True, memory=True, disk=True)
-        print_warning("如果空間不足，模型下載可能會失敗")
-        print()
+
+        if not cache_status.get("cached"):
+            print_warning("首次下載時 Hugging Face 會顯示進度條")
+            print()
 
         model_start_time = time.time()
         model = AutoModelForCausalLM.from_pretrained(
@@ -233,7 +314,10 @@ def test_translation():
                 inputs,
                 max_new_tokens=128,
                 do_sample=False,
-                pad_token_id=tokenizer.eos_token_id
+                pad_token_id=tokenizer.eos_token_id,
+                # 明確設定為 None 以避免警告
+                top_p=None,
+                top_k=None
             )
         gen_time = time.time() - gen_start_time
 
