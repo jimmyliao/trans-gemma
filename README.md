@@ -51,7 +51,7 @@ TranslateGemma 是 **gated repository**，使用前需要：
 
 ### 選項 3: 本地運行（使用 `uv`）⚡
 
-快速使用 `uv`（超快速 Python 套件管理器）運行範例：
+**最簡單的方式**（推薦）：
 
 ```bash
 # 1. 安裝 uv（如果尚未安裝）
@@ -61,17 +61,16 @@ curl -LsSf https://astral.sh/uv/install.sh | sh
 cp .env.example .env
 # 編輯 .env 並填入你的 HF_TOKEN
 
-# 3. 驗證 HF Token（不需要 GPU）
-uv run --extra examples examples/verify-hf-token.py
-
-# 4. 完整測試（需要 GPU，可選）
-uv run --extra examples examples/local-test.py
+# 3. 運行範例（一行指令搞定！）
+./run-examples.sh verify-hf-token    # 驗證 HF Token（不需要 GPU）
+./run-examples.sh local-test         # 完整測試（需要 GPU，可選）
 ```
 
 **優點**：
 - ⚡ 10-100x 比 pip 快
 - 🎯 自動管理虛擬環境（不需要手動 activate）
 - 📦 零配置，一行指令即可運行
+- 🔄 自動載入 .env 檔案
 
 詳細說明請參考：[QUICKSTART.md](QUICKSTART.md)
 

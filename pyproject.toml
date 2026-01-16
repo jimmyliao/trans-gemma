@@ -51,9 +51,8 @@ Homepage = "https://github.com/jimmyliao/trans-gemma"
 Repository = "https://github.com/jimmyliao/trans-gemma"
 Documentation = "https://github.com/jimmyliao/trans-gemma#readme"
 
-[build-system]
-requires = ["hatchling"]
-build-backend = "hatchling.build"
+# Note: No build-system section needed
+# This is a scripts/examples project, not a package to be built
 
 [tool.ruff]
 line-length = 100
