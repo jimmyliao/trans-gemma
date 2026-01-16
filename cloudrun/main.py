@@ -26,12 +26,81 @@ app = FastAPI(
 model = None
 tokenizer = None
 
+# Language code mapping (ISO 639-1 standard)
+LANGUAGE_CODES = {
+    # Main languages
+    "English": "en",
+    "Traditional Chinese (Taiwan)": "zh-TW",
+    "Simplified Chinese (China)": "zh-CN",
+    "Japanese": "ja",
+    "Korean": "ko",
+
+    # European languages
+    "French": "fr",
+    "German": "de",
+    "Spanish": "es",
+    "Italian": "it",
+    "Portuguese": "pt",
+    "Russian": "ru",
+    "Ukrainian": "uk",
+    "Dutch": "nl",
+    "Polish": "pl",
+    "Czech": "cs",
+    "Turkish": "tr",
+    "Greek": "el",
+    "Bulgarian": "bg",
+    "Danish": "da",
+    "Finnish": "fi",
+    "Norwegian": "no",
+    "Swedish": "sv",
+    "Romanian": "ro",
+    "Hungarian": "hu",
+
+    # Asian & Middle Eastern languages
+    "Arabic": "ar",
+    "Hindi": "hi",
+    "Vietnamese": "vi",
+    "Thai": "th",
+    "Indonesian": "id",
+    "Filipino": "fil",
+    "Malay": "ms",
+    "Bengali": "bn",
+    "Hebrew": "he",
+    "Persian": "fa",
+}
+
+def get_lang_code(lang_name: str) -> str:
+    """
+    Get language code for the given language name.
+
+    Args:
+        lang_name: Language name
+
+    Returns:
+        ISO 639-1 language code
+
+    Raises:
+        ValueError: If language is not supported
+    """
+    code = LANGUAGE_CODES.get(lang_name)
+    if not code:
+        supported_langs = ", ".join(list(LANGUAGE_CODES.keys())[:10]) + "..."
+        raise ValueError(
+            f"Language '{lang_name}' not supported. "
+            f"Supported languages: {supported_langs}"
+        )
+    return code
+
 class TranslationRequest(BaseModel):
     """Translation request model"""
     text: str = Field(..., description="Text to translate", min_length=1)
+    source_lang: str = Field(
+        default="English",
+        description="Source language (e.g., 'English', 'Japanese')"
+    )
     target_lang: str = Field(
-        default="Traditional Chinese",
-        description="Target language for translation"
+        default="Traditional Chinese (Taiwan)",
+        description="Target language (e.g., 'Traditional Chinese (Taiwan)', 'Japanese')"
     )
     max_tokens: int = Field(
         default=256,
@@ -129,12 +198,22 @@ async def translate(request: TranslationRequest):
         )
 
     try:
-        logger.info(f"Translating to {request.target_lang}: {request.text[:50]}...")
+        logger.info(f"Translating from {request.source_lang} to {request.target_lang}: {request.text[:50]}...")
 
-        # Construct the translation prompt
+        # Get language codes (validates language support)
+        source_code = get_lang_code(request.source_lang)
+        target_code = get_lang_code(request.target_lang)
+
+        # TranslateGemma requires structured format with language codes
+        # ⚠️ CRITICAL: Must use this format, not free-text
         messages = [{
             "role": "user",
-            "content": f"Translate this to {request.target_lang}: {request.text}"
+            "content": [{
+                "type": "text",
+                "text": request.text,
+                "source_lang_code": source_code,
+                "target_lang_code": target_code
+            }]
         }]
 
         # Apply chat template

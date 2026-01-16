@@ -55,7 +55,7 @@ python examples/translategemma-fix.py
 
 **特色**：
 - ✅ 正確的 TranslateGemma message 格式
-- ✅ 語言代碼映射（ISO 639-3）
+- ✅ 語言代碼映射（ISO 639-1）
 - ✅ 包含 source_lang_code 和 target_lang_code
 - ✅ 多種語言翻譯範例
 
@@ -91,8 +91,8 @@ messages = [
             {
                 "type": "text",
                 "text": "Hello",
-                "source_lang_code": "eng",
-                "target_lang_code": "zho_Hant"
+                "source_lang_code": "en",
+                "target_lang_code": "zh-TW"
             }
         ]
     }

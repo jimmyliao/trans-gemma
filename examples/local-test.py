@@ -117,8 +117,8 @@ def test_translation():
                     {
                         "type": "text",
                         "text": text,
-                        "source_lang_code": "eng",
-                        "target_lang_code": "zho_Hant"
+                        "source_lang_code": "en",
+                        "target_lang_code": "zh-TW"
                     }
                 ]
             }
