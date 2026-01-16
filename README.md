@@ -138,7 +138,7 @@ cd cloudrun
 
 ## 👤 作者
 
-**James Liao** ([@jimmyliao](https://github.com/jimmyliao))
+**Jimmy Liao** ([@jimmyliao](https://github.com/jimmyliao))
 
 ---
 
