@@ -60,6 +60,16 @@ async def load_model():
 
     try:
         logger.info("Loading TranslateGemma model...")
+
+        # Authenticate with Hugging Face if token is provided
+        hf_token = os.getenv("HF_TOKEN")
+        if hf_token:
+            from huggingface_hub import login
+            login(token=hf_token)
+            logger.info("Authenticated with Hugging Face")
+        else:
+            logger.warning("HF_TOKEN not found. Make sure model access is public or token is set.")
+
         MODEL_ID = os.getenv("MODEL_ID", "google/translategemma-4b-it")
 
         # Load tokenizer

@@ -12,6 +12,18 @@ if [ -z "$PROJECT_ID" ]; then
     exit 1
 fi
 
+# Check HF_TOKEN
+if [ -z "$HF_TOKEN" ]; then
+    echo "Warning: HF_TOKEN environment variable is not set"
+    echo "TranslateGemma is a gated model and requires Hugging Face authentication"
+    echo "Please set it with: export HF_TOKEN=your-hf-token"
+    read -p "Continue without HF_TOKEN? (y/N): " -n 1 -r
+    echo
+    if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+        exit 1
+    fi
+fi
+
 export REGION="${REGION:-us-central1}"
 export SERVICE_NAME="${SERVICE_NAME:-translategemma-4b}"
 export IMAGE_NAME="gcr.io/${PROJECT_ID}/${SERVICE_NAME}"
@@ -53,7 +65,9 @@ docker push ${IMAGE_NAME}
 
 # Deploy to Cloud Run with GPU
 echo "Deploying to Cloud Run with GPU..."
-gcloud beta run deploy ${SERVICE_NAME} \
+
+# Build deploy command
+DEPLOY_CMD="gcloud beta run deploy ${SERVICE_NAME} \
     --image=${IMAGE_NAME} \
     --platform=managed \
     --region=${REGION} \
@@ -66,7 +80,16 @@ gcloud beta run deploy ${SERVICE_NAME} \
     --gpu-type=nvidia-l4 \
     --max-instances=3 \
     --min-instances=0 \
-    --allow-unauthenticated
+    --allow-unauthenticated"
+
+# Add HF_TOKEN as environment variable if set
+if [ ! -z "$HF_TOKEN" ]; then
+    echo "Adding HF_TOKEN as environment variable..."
+    DEPLOY_CMD="$DEPLOY_CMD --set-env-vars=HF_TOKEN=${HF_TOKEN}"
+fi
+
+# Execute deployment
+eval $DEPLOY_CMD
 
 # Get the service URL
 SERVICE_URL=$(gcloud run services describe ${SERVICE_NAME} \

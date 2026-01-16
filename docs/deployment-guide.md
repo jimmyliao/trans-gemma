@@ -8,6 +8,17 @@
 - GCP 專案（已啟用 GPU）
 - `gcloud` CLI 工具
 - Docker（用於本地部署）
+- **Hugging Face Access Token**（用於存取 TranslateGemma 模型）
+
+### ⚠️ 重要：Hugging Face 模型存取
+
+TranslateGemma 是 gated repository，部署前必須：
+
+1. 前往 [Hugging Face TranslateGemma 頁面](https://huggingface.co/google/translategemma-4b-it)
+2. 點擊「Request access」申請存取（通常立即批准）
+3. 建立 [Hugging Face Access Token](https://huggingface.co/settings/tokens)（選擇 Read 權限即可）
+
+詳細步驟請參考：[Hugging Face 存取設定指南](huggingface-access.md)
 
 ## 方式一：手動部署（使用腳本）
 
@@ -17,7 +28,10 @@
 export PROJECT_ID="your-gcp-project-id"
 export REGION="us-central1"  # 或其他支援 GPU 的區域
 export SERVICE_NAME="translategemma-4b"
+export HF_TOKEN="hf_xxxxx"  # 你的 Hugging Face token
 ```
+
+**注意**：不要將 HF_TOKEN 寫入腳本或 commit 到 Git！
 
 ### 2. 認證到 GCP
 
@@ -108,10 +122,11 @@ gcloud iam service-accounts keys create key.json \
 2. 點擊 "New repository secret"
 3. 新增以下 secrets：
 
-| Secret Name | Value |
-|------------|-------|
-| `GCP_PROJECT_ID` | 你的 GCP 專案 ID |
-| `GCP_SA_KEY` | `key.json` 的完整內容 |
+| Secret Name | Value | 說明 |
+|------------|-------|------|
+| `GCP_PROJECT_ID` | 你的 GCP 專案 ID | Google Cloud 專案 |
+| `GCP_SA_KEY` | `key.json` 的完整內容 | Service Account 金鑰 |
+| `HF_TOKEN` | `hf_xxxxx` | Hugging Face Access Token（必須） |
 
 **重要**：設定完成後，請刪除本地的 `key.json` 檔案：
 

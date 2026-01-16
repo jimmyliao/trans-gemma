@@ -6,7 +6,16 @@
 
 - VS Code 1.85 或更新版本
 - Google 帳號
+- Hugging Face 帳號（用於存取 TranslateGemma 模型）
 - 穩定的網路連線
+
+### ⚠️ 重要：先完成 Hugging Face 存取申請
+
+TranslateGemma 是 gated repository，請先完成：
+1. [申請模型存取](https://huggingface.co/google/translategemma-4b-it)
+2. [建立 Access Token](https://huggingface.co/settings/tokens)
+
+詳細步驟請參考：[Hugging Face 存取設定指南](huggingface-access.md)
 
 ## 安裝步驟
 

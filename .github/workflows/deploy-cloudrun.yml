@@ -50,6 +50,8 @@ jobs:
           docker push gcr.io/${{ env.PROJECT_ID }}/${{ env.SERVICE_NAME }}:latest
 
       - name: Deploy to Cloud Run
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
         run: |
           gcloud beta run deploy ${{ env.SERVICE_NAME }} \
             --image=gcr.io/${{ env.PROJECT_ID }}/${{ env.SERVICE_NAME }}:${{ github.sha }} \
@@ -64,7 +66,8 @@ jobs:
             --gpu-type=nvidia-l4 \
             --max-instances=3 \
             --min-instances=0 \
-            --allow-unauthenticated
+            --allow-unauthenticated \
+            --set-env-vars=HF_TOKEN=$HF_TOKEN
 
       - name: Get Service URL
         id: get-url

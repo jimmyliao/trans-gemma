@@ -23,13 +23,25 @@
 
 ## 🚀 快速開始
 
+### ⚠️ 前置需求：Hugging Face 模型存取
+
+TranslateGemma 是 **gated repository**，使用前需要：
+
+1. 前往 [Hugging Face TranslateGemma 頁面](https://huggingface.co/google/translategemma-4b-it)
+2. 點擊「**Request access**」申請存取（通常立即批准）
+3. 建立 [Hugging Face Access Token](https://huggingface.co/settings/tokens)
+
+詳細步驟請參考：[Hugging Face 存取設定指南](docs/huggingface-access.md)
+
 ### 選項 1: Google Colab（推薦）
 
 [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/jimmyliao/trans-gemma/blob/main/translategemma-colab.ipynb)
 
-1. 點擊上方按鈕在 Colab 中開啟 notebook
-2. 確認 GPU 已啟用（Runtime > Change runtime type > T4 GPU）
-3. 執行所有 cells，體驗 TranslateGemma 翻譯功能
+1. **完成上方的 Hugging Face 存取申請**
+2. 點擊按鈕在 Colab 中開啟 notebook
+3. 確認 GPU 已啟用（Runtime > Change runtime type > T4 GPU）
+4. 在 Colab Secrets 中設定 `HF_TOKEN`（或手動輸入）
+5. 執行所有 cells，體驗 TranslateGemma 翻譯功能
 
 ### 選項 2: VS Code + Colab 整合
 
