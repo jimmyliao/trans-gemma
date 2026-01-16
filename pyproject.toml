@@ -22,6 +22,7 @@ dependencies = [
 # For running examples
 examples = [
     "python-dotenv>=1.0.0",
+    "psutil>=5.9.0",
 ]
 
 # For Cloud Run deployment

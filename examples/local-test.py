@@ -9,11 +9,73 @@
 
 import os
 import sys
+import time
+import psutil
+import shutil
+from datetime import datetime
 from pathlib import Path
+
+# 顏色代碼
+class Colors:
+    RED = '\033[0;31m'
+    GREEN = '\033[0;32m'
+    YELLOW = '\033[1;33m'
+    BLUE = '\033[0;34m'
+    CYAN = '\033[0;36m'
+    BOLD = '\033[1m'
+    NC = '\033[0m'  # No Color
 
 # 添加專案根目錄到 path
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
+
+# 進度顯示工具函數
+def print_step(step, message, **kwargs):
+    """顯示步驟進度"""
+    timestamp = kwargs.get('timestamp', False)
+    memory = kwargs.get('memory', False)
+    disk = kwargs.get('disk', False)
+
+    prefix = f"{Colors.BLUE}[{step}]{Colors.NC}"
+
+    # 時間戳記
+    time_str = ""
+    if timestamp:
+        time_str = f" {Colors.CYAN}({datetime.now().strftime('%H:%M:%S')}){Colors.NC}"
+
+    print(f"{prefix} {message}{time_str}")
+
+    # 記憶體使用
+    if memory:
+        mem = psutil.virtual_memory()
+        mem_used_gb = mem.used / (1024**3)
+        mem_total_gb = mem.total / (1024**3)
+        mem_percent = mem.percent
+        print(f"   💾 記憶體: {mem_used_gb:.1f}GB / {mem_total_gb:.1f}GB ({mem_percent}%)")
+
+    # 磁碟空間
+    if disk:
+        disk_usage = shutil.disk_usage("/")
+        disk_free_gb = disk_usage.free / (1024**3)
+        disk_total_gb = disk_usage.total / (1024**3)
+        disk_percent = (disk_usage.used / disk_usage.total) * 100
+        print(f"   💿 磁碟空間: {disk_free_gb:.1f}GB 可用 / {disk_total_gb:.1f}GB 總計 ({100-disk_percent:.1f}% 可用)")
+
+def print_success(message, detail=None):
+    """顯示成功訊息"""
+    print(f"{Colors.GREEN}✅ {message}{Colors.NC}")
+    if detail:
+        print(f"   {Colors.CYAN}{detail}{Colors.NC}")
+
+def print_error(message, detail=None):
+    """顯示錯誤訊息"""
+    print(f"{Colors.RED}❌ {message}{Colors.NC}")
+    if detail:
+        print(f"   {detail}")
+
+def print_warning(message):
+    """顯示警告訊息"""
+    print(f"{Colors.YELLOW}⚠️  {message}{Colors.NC}")
 
 def load_env():
     """載入 .env 檔案"""
@@ -88,27 +150,56 @@ def test_model_access():
 
 def test_translation():
     """測試翻譯功能"""
-    print("\n測試翻譯功能...")
+    print("\n" + "="*80)
+    print_step("4/4", "開始翻譯功能測試", timestamp=True, memory=True, disk=True)
+    print("="*80)
+
+    start_time = time.time()
 
     try:
+        # 設定 transformers 日誌等級，減少不必要的警告
+        os.environ["TRANSFORMERS_VERBOSITY"] = "error"
+
         from transformers import AutoModelForCausalLM, AutoTokenizer
         import torch
 
         MODEL_ID = os.getenv("MODEL_ID", "google/translategemma-4b-it")
 
-        print("載入模型（可能需要幾分鐘）...")
+        # 步驟 1: 載入 Tokenizer
+        print()
+        print_step("4.1", f"載入 Tokenizer: {MODEL_ID}", timestamp=True)
         tokenizer = AutoTokenizer.from_pretrained(MODEL_ID)
+        print_success("Tokenizer 載入成功", f"詞彙表大小: {len(tokenizer):,}")
+
+        # 步驟 2: 載入模型（顯示記憶體和磁碟狀態）
+        print()
+        print_step("4.2", "載入模型（可能需要幾分鐘，Hugging Face 會顯示下載進度）",
+                   timestamp=True, memory=True, disk=True)
+        print_warning("如果空間不足，模型下載可能會失敗")
+        print()
+
+        model_start_time = time.time()
         model = AutoModelForCausalLM.from_pretrained(
             MODEL_ID,
             torch_dtype=torch.bfloat16,
             device_map="auto"
         )
+        model_load_time = time.time() - model_start_time
 
-        print("✅ 模型載入成功")
+        print()
+        device_info = f"device: {model.device}, dtype: {model.dtype}"
+        print_success("模型載入成功",
+                     f"{device_info}, 耗時: {model_load_time:.1f} 秒")
 
-        # 測試翻譯（使用正確的 TranslateGemma 格式）
-        print("\n執行測試翻譯...")
+        # 顯示模型載入後的記憶體狀態
+        mem = psutil.virtual_memory()
+        print(f"   💾 當前記憶體使用: {mem.used / (1024**3):.1f}GB ({mem.percent}%)")
+
+        # 步驟 3: 準備翻譯
+        print()
+        print_step("4.3", "準備翻譯測試（英文→繁體中文）", timestamp=True)
         text = "Hello, world!"
+        print(f"   原文: {text}")
 
         messages = [
             {
@@ -130,6 +221,13 @@ def test_translation():
             add_generation_prompt=True
         ).to(model.device)
 
+        print(f"   輸入 tokens: {inputs.shape[1]}")
+
+        # 步驟 4: 執行翻譯
+        print()
+        print_step("4.4", "執行翻譯推理", timestamp=True)
+
+        gen_start_time = time.time()
         with torch.no_grad():
             outputs = model.generate(
                 inputs,
@@ -137,64 +235,106 @@ def test_translation():
                 do_sample=False,
                 pad_token_id=tokenizer.eos_token_id
             )
+        gen_time = time.time() - gen_start_time
 
         result = tokenizer.decode(outputs[0], skip_special_tokens=True)
 
-        print(f"原文: {text}")
-        print(f"譯文: {result}")
+        # 提取實際翻譯結果（移除 prompt）
+        # TranslateGemma 輸出格式: <bos>source<eos><bos>translation<eos>
+        translation = result.split("<eos>")[-1].strip() if "<eos>" in result else result
+
         print()
-        print("✅ 翻譯測試成功")
+        print(f"{Colors.BOLD}翻譯結果:{Colors.NC}")
+        print(f"   原文: {text}")
+        print(f"   譯文: {translation}")
+        print(f"   推理時間: {gen_time:.2f} 秒")
+        print(f"   輸出 tokens: {outputs.shape[1]}")
+        print(f"   速度: {outputs.shape[1] / gen_time:.1f} tokens/秒")
+
+        # 總結
+        total_time = time.time() - start_time
+        print()
+        print("="*80)
+        print_success("翻譯測試完成", f"總耗時: {total_time:.1f} 秒")
+        print("="*80)
+
         return True
 
     except Exception as e:
-        print(f"❌ 翻譯測試失敗: {e}")
+        print()
+        print_error("翻譯測試失敗", str(e))
         import traceback
         traceback.print_exc()
         return False
 
 def main():
     """主函數"""
+    print()
     print("="*80)
-    print("TranslateGemma 本地測試")
+    print(f"{Colors.BOLD}TranslateGemma 本地測試{Colors.NC}")
     print("="*80)
+    print()
+
+    # 顯示系統資訊
+    mem = psutil.virtual_memory()
+    disk = shutil.disk_usage("/")
+    print(f"💻 系統資訊:")
+    print(f"   記憶體: {mem.total / (1024**3):.1f}GB 總計, {mem.available / (1024**3):.1f}GB 可用")
+    print(f"   磁碟: {disk.free / (1024**3):.1f}GB 可用 / {disk.total / (1024**3):.1f}GB 總計")
     print()
 
     # 1. 載入 .env
-    print("步驟 1: 載入 .env 檔案")
+    print_step("1/4", "載入 .env 檔案", timestamp=True)
     if not load_env():
         return 1
-    print("✅ .env 檔案載入成功")
+    print_success(".env 檔案載入成功")
     print()
 
     # 2. 測試 token
-    print("步驟 2: 測試 HF_TOKEN")
+    print_step("2/4", "測試 HF_TOKEN", timestamp=True)
     if not test_token():
         return 1
     print()
 
     # 3. 測試模型存取
-    print("步驟 3: 測試模型存取")
+    print_step("3/4", "測試模型存取", timestamp=True)
     if not test_model_access():
         return 1
     print()
 
     # 4. 測試翻譯（可選，因為載入模型需要較長時間）
-    print("步驟 4: 測試翻譯功能")
-    response = input("是否執行翻譯測試？(載入模型需要較長時間) [y/N]: ")
+    print(f"{Colors.YELLOW}{'='*80}{Colors.NC}")
+    print(f"{Colors.YELLOW}步驟 4/4: 翻譯功能測試（可選）{Colors.NC}")
+    print(f"{Colors.YELLOW}{'='*80}{Colors.NC}")
+    print()
+    print_warning("此步驟會下載完整模型（約 8-9 GB）並載入到記憶體")
+    print(f"   建議至少有 {Colors.BOLD}12 GB 可用磁碟空間{Colors.NC} 和 {Colors.BOLD}10 GB 可用記憶體{Colors.NC}")
+    print()
+
+    # 檢查空間是否足夠
+    if disk.free / (1024**3) < 10:
+        print_warning(f"磁碟空間不足（僅 {disk.free / (1024**3):.1f}GB），可能會失敗")
+    if mem.available / (1024**3) < 8:
+        print_warning(f"可用記憶體不足（僅 {mem.available / (1024**3):.1f}GB），可能會失敗")
+
+    print()
+    response = input("是否執行翻譯測試？[y/N]: ")
     if response.lower() == 'y':
         if not test_translation():
             return 1
     else:
-        print("⏭️  跳過翻譯測試")
+        print()
+        print_warning("跳過翻譯測試")
 
     print()
     print("="*80)
-    print("🎉 所有測試完成！")
+    print_success("所有測試完成！")
     print("="*80)
     print()
-    print("下一步：")
-    print("1. 在 Colab 中開啟 translategemma-colab.ipynb")
-    print("2. 或部署到 Cloud Run: cd cloudrun && ./deploy.sh")
+    print(f"{Colors.CYAN}下一步：{Colors.NC}")
+    print(f"   1. 在 Colab 中開啟 translategemma-colab.ipynb")
+    print(f"   2. 或部署到 Cloud Run: cd cloudrun && ./deploy.sh")
+    print()
 
     return 0
 

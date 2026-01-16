@@ -64,6 +64,9 @@ cp .env.example .env
 # 3. 運行範例（一行指令搞定！）
 ./run-examples.sh verify-hf-token    # 驗證 HF Token（不需要 GPU）
 ./run-examples.sh local-test         # 完整測試（需要 GPU，可選）
+
+# 4. 清理快取（可選）
+./run-examples.sh cleanup            # 清理 HF/uv 快取，釋放空間
 ```
 
 **優點**：
@@ -71,6 +74,7 @@ cp .env.example .env
 - 🎯 自動管理虛擬環境（不需要手動 activate）
 - 📦 零配置，一行指令即可運行
 - 🔄 自動載入 .env 檔案
+- 🧹 內建清理功能（自動檢測並清理快取）
 
 詳細說明請參考：[QUICKSTART.md](QUICKSTART.md)
 
