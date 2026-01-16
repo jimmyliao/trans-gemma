@@ -1,0 +1,64 @@
+[project]
+name = "trans-gemma"
+version = "0.1.0"
+description = "TranslateGemma 4B translation experiments and deployment"
+authors = [
+    {name = "Jimmy Liao", email = "jimmyliao@leapdesign.ai"}
+]
+readme = "README.md"
+license = {text = "MIT"}
+requires-python = ">=3.10"
+
+dependencies = [
+    "transformers>=4.36.0",
+    "torch>=2.1.0",
+    "accelerate>=0.25.0",
+    "huggingface-hub>=0.20.0",
+    "sentencepiece>=0.1.99",
+    "protobuf>=4.25.0",
+]
+
+[project.optional-dependencies]
+# For running examples
+examples = [
+    "python-dotenv>=1.0.0",
+]
+
+# For Cloud Run deployment
+cloudrun = [
+    "fastapi>=0.109.0",
+    "uvicorn[standard]>=0.27.0",
+    "pydantic>=2.5.0",
+]
+
+# For development
+dev = [
+    "pytest>=7.4.0",
+    "pytest-asyncio>=0.21.0",
+    "black>=23.0.0",
+    "ruff>=0.1.0",
+    "ipython>=8.12.0",
+    "jupyter>=1.0.0",
+]
+
+# All dependencies
+all = [
+    "trans-gemma[examples,cloudrun,dev]",
+]
+
+[project.urls]
+Homepage = "https://github.com/jimmyliao/trans-gemma"
+Repository = "https://github.com/jimmyliao/trans-gemma"
+Documentation = "https://github.com/jimmyliao/trans-gemma#readme"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+[tool.black]
+line-length = 100
+target-version = ["py310"]
