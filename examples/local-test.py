@@ -423,15 +423,39 @@ def main():
     print(f"{Colors.YELLOW}步驟 4/4: 翻譯功能測試（可選）{Colors.NC}")
     print(f"{Colors.YELLOW}{'='*80}{Colors.NC}")
     print()
-    print_warning("此步驟會下載完整模型（約 8-9 GB）並載入到記憶體")
-    print(f"   建議至少有 {Colors.BOLD}12 GB 可用磁碟空間{Colors.NC} 和 {Colors.BOLD}10 GB 可用記憶體{Colors.NC}")
+
+    # 先檢查模型是否已下載
+    MODEL_ID = os.getenv("MODEL_ID", "google/translategemma-4b-it")
+    cache_status = check_model_cache(MODEL_ID)
+
+    # 根據模型狀態顯示不同訊息
+    if cache_status.get("cached"):
+        # 模型已下載
+        print_success(f"模型已在快取中（{cache_status['size_gb']:.1f} GB）")
+        print(f"   {Colors.CYAN}只需要載入到記憶體，無需重新下載{Colors.NC}")
+        required_disk = 3.0  # 只需要臨時空間
+        required_mem = 10.0
+        print(f"   建議至少有 {Colors.BOLD}{required_disk:.0f} GB 可用磁碟空間{Colors.NC}（載入臨時空間）")
+        print(f"   和 {Colors.BOLD}{required_mem:.0f} GB 可用記憶體{Colors.NC}")
+    else:
+        # 模型未下載
+        print_warning("模型尚未下載，此步驟會下載完整模型（約 8-9 GB）並載入到記憶體")
+        required_disk = 12.0  # 需要下載 + 臨時空間
+        required_mem = 10.0
+        print(f"   建議至少有 {Colors.BOLD}{required_disk:.0f} GB 可用磁碟空間{Colors.NC}")
+        print(f"   和 {Colors.BOLD}{required_mem:.0f} GB 可用記憶體{Colors.NC}")
+
     print()
 
-    # 檢查空間是否足夠
-    if disk.free / (1024**3) < 10:
-        print_warning(f"磁碟空間不足（僅 {disk.free / (1024**3):.1f}GB），可能會失敗")
-    if mem.available / (1024**3) < 8:
-        print_warning(f"可用記憶體不足（僅 {mem.available / (1024**3):.1f}GB），可能會失敗")
+    # 檢查空間是否足夠（使用動態需求）
+    free_disk_gb = disk.free / (1024**3)
+    free_mem_gb = mem.available / (1024**3)
+
+    if free_disk_gb < required_disk:
+        print_warning(f"磁碟空間不足（僅 {free_disk_gb:.1f}GB），可能會失敗")
+        print(f"   {Colors.CYAN}建議執行: ./run-examples.sh cleanup{Colors.NC}")
+    if free_mem_gb < required_mem:
+        print_warning(f"可用記憶體不足（僅 {free_mem_gb:.1f}GB），可能會失敗")
 
     print()
     response = input("是否執行翻譯測試？[y/N]: ")
