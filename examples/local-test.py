@@ -237,19 +237,24 @@ def test_translation():
             )
         gen_time = time.time() - gen_start_time
 
-        result = tokenizer.decode(outputs[0], skip_special_tokens=True)
+        # 只解碼新生成的 tokens（不包括輸入 prompt）
+        # 這樣就不會顯示 system prompt
+        generated_tokens = outputs[0][inputs.shape[1]:]
+        translation = tokenizer.decode(generated_tokens, skip_special_tokens=True).strip()
 
-        # 提取實際翻譯結果（移除 prompt）
-        # TranslateGemma 輸出格式: <bos>source<eos><bos>translation<eos>
-        translation = result.split("<eos>")[-1].strip() if "<eos>" in result else result
+        # 如果需要看完整輸出（除錯用）
+        if os.getenv("DEBUG_TRANSLATION"):
+            full_output = tokenizer.decode(outputs[0], skip_special_tokens=True)
+            print(f"\n{Colors.YELLOW}[DEBUG] 完整輸出:{Colors.NC}")
+            print(full_output)
 
         print()
         print(f"{Colors.BOLD}翻譯結果:{Colors.NC}")
         print(f"   原文: {text}")
         print(f"   譯文: {translation}")
         print(f"   推理時間: {gen_time:.2f} 秒")
-        print(f"   輸出 tokens: {outputs.shape[1]}")
-        print(f"   速度: {outputs.shape[1] / gen_time:.1f} tokens/秒")
+        print(f"   生成 tokens: {len(generated_tokens)} (總計: {outputs.shape[1]})")
+        print(f"   生成速度: {len(generated_tokens) / gen_time:.1f} tokens/秒")
 
         # 總結
         total_time = time.time() - start_time
