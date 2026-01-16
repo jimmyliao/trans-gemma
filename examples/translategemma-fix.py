@@ -7,29 +7,60 @@ TranslateGemma 使用特殊的 chat template 格式，需要包含 source_lang_c
 from transformers import AutoModelForCausalLM, AutoTokenizer
 import torch
 
-# 語言代碼映射（TranslateGemma 使用 ISO 639-3 代碼）
+# 語言代碼映射（TranslateGemma 使用 ISO 639-1 兩碼標準）
+# 修正重點：
+# 1. 改用 ISO 639-1（兩碼），例如 English 是 "en" 而非 "eng"
+# 2. 中文使用 "zh-TW" / "zh-CN" 格式（符合模型對 Regionalized variant 的要求）
+
 LANGUAGE_CODES = {
-    "English": "eng",
-    "Traditional Chinese": "zho_Hant",
-    "Simplified Chinese": "zho_Hans",
-    "Japanese": "jpn",
-    "Korean": "kor",
-    "French": "fra",
-    "German": "deu",
-    "Spanish": "spa",
-    "Italian": "ita",
-    "Portuguese": "por",
-    "Russian": "rus",
-    "Arabic": "ara",
-    "Hindi": "hin",
-    "Vietnamese": "vie",
-    "Thai": "tha",
-    "Indonesian": "ind",
+    # 主要常用語言
+    "English": "en",
+    "Traditional Chinese (Taiwan)": "zh-TW",  # 繁體中文
+    "Simplified Chinese (China)": "zh-CN",    # 簡體中文
+    "Japanese": "ja",
+    "Korean": "ko",
+
+    # 歐洲語言
+    "French": "fr",
+    "German": "de",
+    "Spanish": "es",
+    "Italian": "it",
+    "Portuguese": "pt",
+    "Russian": "ru",
+    "Dutch": "nl",
+    "Polish": "pl",
+
+    # 亞洲與中東語言
+    "Arabic": "ar",
+    "Hindi": "hi",
+    "Vietnamese": "vi",
+    "Thai": "th",
+    "Indonesian": "id",
+    "Hebrew": "he",
+    "Persian": "fa",
 }
+
+def get_lang_code(lang_name):
+    """
+    取得語言代碼，如果不存在則拋出錯誤
+
+    Args:
+        lang_name: 語言名稱
+
+    Returns:
+        對應的語言代碼
+
+    Raises:
+        ValueError: 當語言不被支援時
+    """
+    code = LANGUAGE_CODES.get(lang_name)
+    if not code:
+        raise ValueError(f"Language '{lang_name}' not supported.")
+    return code
 
 def translate(
     text: str,
-    target_lang: str = "Traditional Chinese",
+    target_lang: str = "Traditional Chinese (Taiwan)",
     source_lang: str = "English",
     model=None,
     tokenizer=None,
@@ -49,9 +80,9 @@ def translate(
     Returns:
         翻譯結果
     """
-    # 取得語言代碼
-    source_code = LANGUAGE_CODES.get(source_lang, "eng")
-    target_code = LANGUAGE_CODES.get(target_lang, "zho_Hant")
+    # 取得語言代碼（會自動驗證）
+    source_code = get_lang_code(source_lang)
+    target_code = get_lang_code(target_lang)
 
     # TranslateGemma 的正確格式
     messages = [
@@ -117,7 +148,7 @@ def demo():
     # 測試 1: 英文 → 繁體中文
     print("測試 1: 英文 → 繁體中文")
     text1 = "Hello, how are you today?"
-    result1 = translate(text1, "Traditional Chinese", "English", model, tokenizer)
+    result1 = translate(text1, "Traditional Chinese (Taiwan)", "English", model, tokenizer)
     print(f"原文: {text1}")
     print(f"譯文: {result1}\n")
 
@@ -131,7 +162,7 @@ def demo():
     # 測試 3: 繁體中文 → 英文
     print("測試 3: 繁體中文 → 英文")
     text3 = "我喜歡在週末閱讀和寫程式。"
-    result3 = translate(text3, "English", "Traditional Chinese", model, tokenizer)
+    result3 = translate(text3, "English", "Traditional Chinese (Taiwan)", model, tokenizer)
     print(f"原文: {text3}")
     print(f"譯文: {result3}\n")
 

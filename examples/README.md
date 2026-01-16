@@ -131,26 +131,30 @@ MODEL_ID=google/translategemma-4b-it
 
 ## 🎯 語言代碼對照表
 
-TranslateGemma 使用 ISO 639-3 語言代碼：
+TranslateGemma 使用 **ISO 639-1（兩碼）** 標準，中文使用 CLDR 格式：
 
-| 語言名稱 | 代碼 |
-|---------|------|
-| English | eng |
-| Traditional Chinese | zho_Hant |
-| Simplified Chinese | zho_Hans |
-| Japanese | jpn |
-| Korean | kor |
-| French | fra |
-| German | deu |
-| Spanish | spa |
-| Italian | ita |
-| Portuguese | por |
-| Russian | rus |
-| Arabic | ara |
-| Hindi | hin |
-| Vietnamese | vie |
-| Thai | tha |
-| Indonesian | ind |
+| 語言名稱 | 代碼 | 說明 |
+|---------|------|------|
+| English | en | |
+| Traditional Chinese (Taiwan) | zh-TW | 繁體中文（台灣） |
+| Simplified Chinese (China) | zh-CN | 簡體中文（中國） |
+| Japanese | ja | |
+| Korean | ko | |
+| French | fr | |
+| German | de | |
+| Spanish | es | |
+| Italian | it | |
+| Portuguese | pt | |
+| Russian | ru | |
+| Arabic | ar | |
+| Hindi | hi | |
+| Vietnamese | vi | |
+| Thai | th | |
+| Indonesian | id | |
+| Hebrew | he | |
+| Persian | fa | |
+
+**重要**：使用兩碼格式（如 `en`），不是三碼格式（如 `eng`）
 
 ## 🔗 相關資源
 
