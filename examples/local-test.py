@@ -286,10 +286,29 @@ def test_translation():
             print()
 
         model_start_time = time.time()
+
+        # 檢查可用記憶體，決定載入策略
+        mem = psutil.virtual_memory()
+        available_mem_gb = mem.available / (1024**3)
+
+        if available_mem_gb < 10:
+            # 記憶體不足，使用 CPU-only 模式（較慢但更穩定）
+            print_warning(f"可用記憶體不足 ({available_mem_gb:.1f}GB < 10GB)")
+            print(f"   {Colors.CYAN}使用 CPU-only 模式（較慢但更穩定）{Colors.NC}")
+            device_map = "cpu"
+            torch_dtype = torch.float32  # CPU 不支援 bfloat16
+        else:
+            # 記憶體充足，使用 auto (MPS 或 CUDA)
+            device_map = "auto"
+            torch_dtype = torch.bfloat16
+
+        print(f"   載入配置: device_map={device_map}, dtype={torch_dtype}")
+        print()
+
         model = AutoModelForCausalLM.from_pretrained(
             MODEL_ID,
-            torch_dtype=torch.bfloat16,
-            device_map="auto",
+            torch_dtype=torch_dtype,
+            device_map=device_map,
             low_cpu_mem_usage=True  # 減少臨時檔案和記憶體使用
         )
         model_load_time = time.time() - model_start_time
