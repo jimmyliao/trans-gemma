@@ -255,6 +255,32 @@ def test_translation():
         print_step("4.2b", "載入模型到記憶體（可能需要幾分鐘）",
                    timestamp=True, memory=True, disk=True)
 
+        # 檢查空間：即使模型已下載，載入時仍需要臨時空間
+        disk = shutil.disk_usage("/")
+        free_gb = disk.free / (1024**3)
+
+        # 計算所需空間
+        if cache_status.get("cached"):
+            # 模型已下載，只需要較少的臨時空間（2-3 GB）
+            required_gb = 3.0
+            space_purpose = "載入臨時空間"
+        else:
+            # 需要下載模型（8.6 GB）+ 臨時空間（2-3 GB）
+            required_gb = 12.0
+            space_purpose = "下載 + 載入"
+
+        if free_gb < required_gb:
+            print_error(
+                f"磁碟空間不足！僅剩 {free_gb:.1f} GB",
+                f"建議至少有 {required_gb:.1f} GB 可用空間（{space_purpose}）"
+            )
+            print()
+            print(f"{Colors.CYAN}解決方案：{Colors.NC}")
+            print(f"   1. 執行清理: ./run-examples.sh cleanup")
+            print(f"   2. 清理系統暫存: sudo rm -rf /private/var/tmp/*")
+            print(f"   3. 改用 Colab（推薦）")
+            return False
+
         if not cache_status.get("cached"):
             print_warning("首次下載時 Hugging Face 會顯示進度條")
             print()
@@ -263,7 +289,8 @@ def test_translation():
         model = AutoModelForCausalLM.from_pretrained(
             MODEL_ID,
             torch_dtype=torch.bfloat16,
-            device_map="auto"
+            device_map="auto",
+            low_cpu_mem_usage=True  # 減少臨時檔案和記憶體使用
         )
         model_load_time = time.time() - model_start_time
 
