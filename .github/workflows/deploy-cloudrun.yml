@@ -1,0 +1,93 @@
+name: Deploy to Cloud Run
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+env:
+  PROJECT_ID: gde-jimmyliao-redeem
+  REGION: us-central1
+  SERVICE_NAME: translategemma-4b
+
+jobs:
+  deploy:
+    name: Deploy TranslateGemma to Cloud Run
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+      id-token: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+        with:
+          project_id: ${{ env.PROJECT_ID }}
+
+      - name: Configure Docker for GCR
+        run: |
+          gcloud auth configure-docker
+
+      - name: Build Docker image
+        run: |
+          docker build -t gcr.io/${{ env.PROJECT_ID }}/${{ env.SERVICE_NAME }}:${{ github.sha }} \
+            -t gcr.io/${{ env.PROJECT_ID }}/${{ env.SERVICE_NAME }}:latest \
+            ./cloudrun
+
+      - name: Push Docker image to GCR
+        run: |
+          docker push gcr.io/${{ env.PROJECT_ID }}/${{ env.SERVICE_NAME }}:${{ github.sha }}
+          docker push gcr.io/${{ env.PROJECT_ID }}/${{ env.SERVICE_NAME }}:latest
+
+      - name: Deploy to Cloud Run
+        run: |
+          gcloud beta run deploy ${{ env.SERVICE_NAME }} \
+            --image=gcr.io/${{ env.PROJECT_ID }}/${{ env.SERVICE_NAME }}:${{ github.sha }} \
+            --platform=managed \
+            --region=${{ env.REGION }} \
+            --port=8080 \
+            --cpu=4 \
+            --memory=16Gi \
+            --timeout=300 \
+            --no-cpu-throttling \
+            --gpu=1 \
+            --gpu-type=nvidia-l4 \
+            --max-instances=3 \
+            --min-instances=0 \
+            --allow-unauthenticated
+
+      - name: Get Service URL
+        id: get-url
+        run: |
+          SERVICE_URL=$(gcloud run services describe ${{ env.SERVICE_NAME }} \
+            --region=${{ env.REGION }} \
+            --format='value(status.url)')
+          echo "url=$SERVICE_URL" >> $GITHUB_OUTPUT
+          echo "Service deployed at: $SERVICE_URL"
+
+      - name: Test API
+        run: |
+          SERVICE_URL="${{ steps.get-url.outputs.url }}"
+          echo "Testing API at $SERVICE_URL"
+
+          # Wait for service to be ready
+          sleep 30
+
+          # Test health endpoint
+          curl -f "$SERVICE_URL/health" || echo "Health check failed"
+
+          # Test translation endpoint
+          curl -X POST "$SERVICE_URL/translate" \
+            -H "Content-Type: application/json" \
+            -d '{"text": "Hello, world!", "target_lang": "Traditional Chinese"}' \
+            || echo "Translation test failed"
