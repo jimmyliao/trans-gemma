@@ -291,14 +291,27 @@ def test_translation():
         mem = psutil.virtual_memory()
         available_mem_gb = mem.available / (1024**3)
 
-        if available_mem_gb < 10:
-            # 記憶體不足，使用 CPU-only 模式（較慢但更穩定）
-            print_warning(f"可用記憶體不足 ({available_mem_gb:.1f}GB < 10GB)")
-            print(f"   {Colors.CYAN}使用 CPU-only 模式（較慢但更穩定）{Colors.NC}")
+        # 允許環境變數強制選擇設備
+        force_device = os.getenv("FORCE_DEVICE")  # 可設為 "mps", "cpu", "auto"
+
+        if force_device == "cpu":
+            print_warning("環境變數 FORCE_DEVICE=cpu，強制使用 CPU 模式")
             device_map = "cpu"
-            torch_dtype = torch.float32  # CPU 不支援 bfloat16
+            torch_dtype = torch.float32
+        elif force_device == "mps":
+            print(f"{Colors.CYAN}環境變數 FORCE_DEVICE=mps，強制使用 MPS (Metal) 模式{Colors.NC}")
+            device_map = "mps"
+            torch_dtype = torch.bfloat16
+        elif available_mem_gb < 8:
+            # 記憶體嚴重不足 (<8GB)，建議使用 CPU
+            print_warning(f"可用記憶體不足 ({available_mem_gb:.1f}GB < 8GB)")
+            print(f"   {Colors.CYAN}建議使用 CPU-only 模式（設定 FORCE_DEVICE=cpu）{Colors.NC}")
+            print(f"   {Colors.YELLOW}或繼續嘗試 MPS 模式（可能失敗）{Colors.NC}")
+            device_map = "auto"  # 讓使用者決定
+            torch_dtype = torch.bfloat16
         else:
-            # 記憶體充足，使用 auto (MPS 或 CUDA)
+            # 記憶體充足 (≥8GB)，使用 auto (MPS 或 CUDA)
+            print(f"{Colors.CYAN}可用記憶體 {available_mem_gb:.1f}GB，使用 MPS (Metal) 加速{Colors.NC}")
             device_map = "auto"
             torch_dtype = torch.bfloat16
 
