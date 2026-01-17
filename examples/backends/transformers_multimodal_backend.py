@@ -3,7 +3,11 @@ import time
 import os
 from typing import Dict, Any, Union
 from pathlib import Path
-from .base import TranslationBackend
+
+try:
+    from .base import TranslationBackend
+except ImportError:
+    from base import TranslationBackend
 
 
 class TransformersMultimodalBackend(TranslationBackend):

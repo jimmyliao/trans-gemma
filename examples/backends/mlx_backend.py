@@ -1,7 +1,11 @@
 """MLX backend for TranslateGemma (Apple Silicon optimized)"""
 import time
 from typing import Dict, Any
-from .base import TranslationBackend
+
+try:
+    from .base import TranslationBackend
+except ImportError:
+    from base import TranslationBackend
 
 
 class MLXBackend(TranslationBackend):

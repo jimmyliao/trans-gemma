@@ -1,15 +1,23 @@
 # Translation backends for TranslateGemma
-from .base import TranslationBackend
-from .transformers_backend import TransformersBackend
-from .transformers_multimodal_backend import TransformersMultimodalBackend
-from .ollama_backend import OllamaBackend
-
 try:
+    from .base import TranslationBackend
+    from .transformers_backend import TransformersBackend
+    from .transformers_multimodal_backend import TransformersMultimodalBackend
+    from .ollama_backend import OllamaBackend
     from .mlx_backend import MLXBackend
     HAS_MLX = True
 except ImportError:
-    MLXBackend = None
-    HAS_MLX = False
+    # Fallback for direct module import (e.g., in Colab)
+    from base import TranslationBackend
+    from transformers_backend import TransformersBackend
+    from transformers_multimodal_backend import TransformersMultimodalBackend
+    from ollama_backend import OllamaBackend
+    try:
+        from mlx_backend import MLXBackend
+        HAS_MLX = True
+    except ImportError:
+        MLXBackend = None
+        HAS_MLX = False
 
 __all__ = [
     'TranslationBackend',
