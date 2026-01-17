@@ -330,8 +330,10 @@ def pdf_mode(backend_name: str, pdf_path: str, source: str, target: str,
             print_error(f"Translation failed for page {page_num}", result["metadata"]["error"])
             continue
 
-        # Print translation
-        print(f"{Colors.GREEN}{result['translation']}{Colors.NC}")
+        # Print translation with word wrap
+        import textwrap
+        wrapped_translation = textwrap.fill(result['translation'], width=100, break_long_words=False, break_on_hyphens=False)
+        print(f"{Colors.GREEN}{wrapped_translation}{Colors.NC}")
         print()
         mode_info = result['metadata'].get('mode', 'text')
         print(f"Time: {result['time']:.2f}s, Tokens: {result['tokens']}, Speed: {result['metadata'].get('tokens_per_second', 0):.1f} tok/s, Mode: {mode_info}")
@@ -401,9 +403,12 @@ def one_shot_mode(backend_name: str, text: str, source: str, target: str):
         print_error("Translation failed", result["metadata"]["error"])
         return 1
 
-    # Print results
+    # Print results with word wrap
+    import textwrap
+    wrapped_translation = textwrap.fill(result['translation'], width=100, break_long_words=False, break_on_hyphens=False)
+    wrapped_translation = '\n  '.join(wrapped_translation.split('\n'))  # Indent each line
     print(f"{Colors.BOLD}Translation:{Colors.NC}")
-    print(f"  {Colors.GREEN}{result['translation']}{Colors.NC}")
+    print(f"  {Colors.GREEN}{wrapped_translation}{Colors.NC}")
     print()
     print(f"Time: {result['time']:.2f}s")
     print(f"Tokens: {result['tokens']}")
@@ -520,8 +525,15 @@ def interactive_mode(backend_name: str):
                 print_error("Translation failed", result["metadata"]["error"])
                 continue
 
-            # Print translation
-            print(f"{Colors.GREEN}→ {result['translation']}{Colors.NC}")
+            # Print translation with word wrap
+            import textwrap
+            wrapped_translation = textwrap.fill(result['translation'], width=96, break_long_words=False, break_on_hyphens=False)
+            # Add arrow prefix to first line, indent rest
+            lines = wrapped_translation.split('\n')
+            lines[0] = f"→ {lines[0]}"
+            for i in range(1, len(lines)):
+                lines[i] = f"  {lines[i]}"
+            print(f"{Colors.GREEN}{chr(10).join(lines)}{Colors.NC}")
             print(f"  ({result['time']:.2f}s, {result['metadata'].get('tokens_per_second', 0):.1f} tok/s)")
             print()
 
