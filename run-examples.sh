@@ -22,23 +22,29 @@ show_help() {
     echo "Usage: ./run-examples.sh [command] [options]"
     echo ""
     echo "Commands:"
-    echo "  verify-hf-token       Verify Hugging Face token and model access (no GPU)"
-    echo "  local-test            Full local test with optional cleanup (needs GPU)"
-    echo "  translategemma-fix    TranslateGemma correct format example (needs GPU)"
-    echo "  simple-translation    Cloud Run API client (no GPU)"
+    echo "  translate             Unified translation tool (NEW!)"
+    echo "  verify-hf-token       Verify Hugging Face token and model access"
+    echo "  local-test            Full transformers test (legacy)"
+    echo "  translategemma-fix    TranslateGemma fix test (legacy)"
+    echo "  simple-translation    Cloud Run API client"
     echo "  cleanup               Clean up cache and temporary files"
     echo "  help                  Show this help message"
     echo ""
-    echo "Device Options (for local-test, translategemma-fix):"
-    echo "  --cpu                 Force CPU-only mode (slower, no GPU)"
+    echo "Translation Tool Options:"
+    echo "  --backend <name>      Backend: transformers, ollama, mlx (default: ollama)"
+    echo "  --mode <mode>         Mode: one-shot, interactive (default: one-shot)"
+    echo "  --text <text>         Text to translate (one-shot mode)"
+    echo "  --target <code>       Target language (default: zh-TW)"
+    echo ""
+    echo "Device Options (for transformers backend):"
+    echo "  --cpu                 Force CPU-only mode"
     echo "  --mps, --metal        Force MPS/Metal mode (M1/M2/M3 Mac)"
     echo "  --auto                Auto-detect best device (default)"
     echo ""
     echo "Examples:"
+    echo "  ./run-examples.sh translate --text \"Hello!\" --backend ollama"
+    echo "  ./run-examples.sh translate --mode interactive --backend transformers"
     echo "  ./run-examples.sh verify-hf-token"
-    echo "  ./run-examples.sh local-test"
-    echo "  ./run-examples.sh local-test --cpu"
-    echo "  ./run-examples.sh local-test --mps"
     echo "  ./run-examples.sh cleanup"
 }
 
@@ -228,8 +234,14 @@ fi
 
 # Run script based on type
 case "$SCRIPT_NAME" in
+    translate)
+        # New unified translation tool
+        echo -e "${BLUE}Running TranslateGemma translation tool...${NC}"
+        echo ""
+        uv run python "examples/translate.py" "${@:2}"
+        ;;
     local-test|translategemma-fix)
-        # Scripts that might benefit from cleanup afterward
+        # Legacy scripts that might benefit from cleanup afterward
         # Also support device options
         run_with_cleanup_option "$SCRIPT_NAME" "${@:2}"
         ;;
