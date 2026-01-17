@@ -35,7 +35,7 @@ TranslateGemma 是 **gated repository**，使用前需要：
 
 ### 選項 1: Google Colab（推薦）
 
-[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/jimmyliao/trans-gemma/blob/main/translategemma-colab.ipynb)
+[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/jimmyliao/trans-gemma/blob/main/document-translator-colab.ipynb)
 
 1. **完成上方的 Hugging Face 存取申請**
 2. 點擊按鈕在 Colab 中開啟 notebook
@@ -46,7 +46,7 @@ TranslateGemma 是 **gated repository**，使用前需要：
 ### 選項 2: VS Code + Colab 整合
 
 1. 安裝 [VS Code Colab Extension](https://marketplace.visualstudio.com/items?itemName=ms-toolsai.vscode-jupyter-colab)
-2. 在 VS Code 中開啟 `translategemma-colab.ipynb`
+2. 在 VS Code 中開啟 `document-translator-colab.ipynb`
 3. 連接到 Colab runtime 並執行
 
 ### 選項 3: 本地運行（使用 `uv`）⚡
@@ -82,9 +82,9 @@ cp .env.example .env
 
 ```
 trans-gemma/
-├── translategemma-colab.ipynb    # 主要 Colab notebook（核心檔案）
-├── README.md                      # 本檔案
-├── .gitignore                     # Git 忽略規則
+├── document-translator-colab.ipynb  # 文件翻譯 Colab notebook（核心檔案）
+├── README.md                         # 本檔案
+├── .gitignore                        # Git 忽略規則
 │
 ├── cloudrun/                      # Cloud Run 部署配置
 │   ├── Dockerfile                # 容器定義
