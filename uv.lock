@@ -590,6 +590,12 @@ wheels = [
 ]
 
 [[package]]
+name = "hanziconv"
+version = "0.3.2"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/63/71/b89cb63077fd807fe31cf7c016a06e7e579a289d8a37aa24a30282d02dd2/hanziconv-0.3.2.tar.gz", hash = "sha256:208866da6ae305bca19eb98702b65c93bb3a803b496e4287ca740d68892fc4c4", size = 276775 }
+
+[[package]]
 name = "hf-xet"
 version = "1.2.0"
 source = { registry = "https://pypi.org/simple" }
@@ -3078,6 +3084,7 @@ dependencies = [
 all = [
     { name = "black" },
     { name = "fastapi" },
+    { name = "hanziconv" },
     { name = "ipython", version = "8.38.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
     { name = "ipython", version = "9.9.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
     { name = "jupyter" },
@@ -3106,6 +3113,7 @@ dev = [
     { name = "ruff" },
 ]
 examples = [
+    { name = "hanziconv" },
     { name = "pillow" },
     { name = "psutil" },
     { name = "pymupdf" },
@@ -3114,6 +3122,7 @@ examples = [
 full = [
     { name = "black" },
     { name = "fastapi" },
+    { name = "hanziconv" },
     { name = "ipython", version = "8.38.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
     { name = "ipython", version = "9.9.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
     { name = "jupyter" },
@@ -3137,6 +3146,7 @@ requires-dist = [
     { name = "accelerate", specifier = ">=0.25.0" },
     { name = "black", marker = "extra == 'dev'", specifier = ">=23.0.0" },
     { name = "fastapi", marker = "extra == 'cloudrun'", specifier = ">=0.109.0" },
+    { name = "hanziconv", marker = "extra == 'examples'", specifier = ">=0.3.2" },
     { name = "huggingface-hub", specifier = ">=0.20.0" },
     { name = "ipython", marker = "extra == 'dev'", specifier = ">=8.12.0" },
     { name = "jupyter", marker = "extra == 'dev'", specifier = ">=1.0.0" },

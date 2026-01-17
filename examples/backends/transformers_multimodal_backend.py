@@ -139,6 +139,15 @@ class TransformersMultimodalBackend(TranslationBackend):
         if ':' in translation:
             translation = translation.split(':', 1)[1].strip()
 
+        # Post-processing: Convert Simplified to Traditional Chinese if needed
+        if target_lang == "zh-TW":
+            try:
+                from hanziconv import HanziConv
+                translation = HanziConv.toTraditional(translation)
+            except ImportError:
+                # hanziconv not installed, skip conversion
+                pass
+
         # Calculate tokens
         input_tokens = inputs.shape[1]
         output_tokens = outputs.shape[1] - input_tokens
@@ -298,6 +307,15 @@ class TransformersMultimodalBackend(TranslationBackend):
             if ':' in translation:
                 translation = translation.split(':', 1)[1].strip()
 
+            # Post-processing: Convert Simplified to Traditional Chinese if needed
+            if target_lang == "zh-TW":
+                try:
+                    from hanziconv import HanziConv
+                    translation = HanziConv.toTraditional(translation)
+                except ImportError:
+                    # hanziconv not installed, skip conversion
+                    pass
+
             # Calculate tokens (estimate from output length)
             output_tokens = len(self.processor.tokenizer.encode(full_output))
 
@@ -322,6 +340,15 @@ class TransformersMultimodalBackend(TranslationBackend):
             translation = full_output.split('\n')[-1].strip()
             if ':' in translation:
                 translation = translation.split(':', 1)[1].strip()
+
+            # Post-processing: Convert Simplified to Traditional Chinese if needed
+            if target_lang == "zh-TW":
+                try:
+                    from hanziconv import HanziConv
+                    translation = HanziConv.toTraditional(translation)
+                except ImportError:
+                    # hanziconv not installed, skip conversion
+                    pass
 
             output_tokens = outputs.shape[1]
 
