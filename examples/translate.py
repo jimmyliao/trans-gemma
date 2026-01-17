@@ -4,7 +4,7 @@ TranslateGemma - Unified Translation Tool
 
 Supports multiple backends and modes:
 - Backends: transformers, ollama, mlx
-- Modes: one-shot (single translation), interactive (REPL)
+- Modes: one-shot (single translation), interactive (REPL), pdf (PDF translation)
 
 Usage:
     # One-shot translation (default backend: ollama)
@@ -12,6 +12,12 @@ Usage:
 
     # Interactive mode
     python translate.py --mode interactive --backend transformers
+
+    # PDF translation
+    python translate.py --mode pdf --file examples/2601.09012v2.pdf --target zh-TW
+
+    # Translate specific pages from PDF
+    python translate.py --mode pdf --file doc.pdf --start-page 1 --end-page 3
 
     # Specify backend
     python translate.py --backend mlx --text "How are you?"
@@ -27,11 +33,19 @@ import os
 import sys
 import time
 from typing import Optional
+from pathlib import Path
 
 # Add backends to path
 sys.path.insert(0, os.path.dirname(__file__))
 
 from backends import get_backend, HAS_MLX
+
+# Check if PyMuPDF is available
+try:
+    import fitz  # PyMuPDF
+    HAS_PDF = True
+except ImportError:
+    HAS_PDF = False
 
 
 # Colors for terminal output
@@ -63,6 +77,242 @@ def print_warning(message):
 
 def print_info(message):
     print(f"{Colors.BLUE}ℹ️  {message}{Colors.NC}")
+
+
+def extract_text_from_pdf(pdf_path: str, start_page: Optional[int] = None, end_page: Optional[int] = None) -> list[tuple[int, str]]:
+    """
+    Extract text from PDF file
+
+    Args:
+        pdf_path: Path to PDF file
+        start_page: Starting page number (1-indexed, inclusive)
+        end_page: Ending page number (1-indexed, inclusive)
+
+    Returns:
+        List of (page_number, text) tuples
+    """
+    if not HAS_PDF:
+        raise ImportError("PyMuPDF not installed. Run: uv pip install pymupdf")
+
+    pdf_path = Path(pdf_path)
+    if not pdf_path.exists():
+        raise FileNotFoundError(f"PDF file not found: {pdf_path}")
+
+    doc = fitz.open(pdf_path)
+    total_pages = len(doc)
+
+    # Determine page range
+    if start_page is None:
+        start_page = 1
+    if end_page is None:
+        end_page = total_pages
+
+    # Validate page range
+    if start_page < 1 or start_page > total_pages:
+        raise ValueError(f"Invalid start page: {start_page} (PDF has {total_pages} pages)")
+    if end_page < start_page or end_page > total_pages:
+        raise ValueError(f"Invalid end page: {end_page} (must be >= {start_page} and <= {total_pages})")
+
+    # Extract text from pages
+    pages_text = []
+    for page_num in range(start_page - 1, end_page):  # 0-indexed internally
+        page = doc[page_num]
+        text = page.get_text()
+        pages_text.append((page_num + 1, text))  # Store 1-indexed page number
+
+    doc.close()
+    return pages_text
+
+
+def pdf_pages_to_images(pdf_path: str, start_page: Optional[int] = None, end_page: Optional[int] = None, dpi: int = 150):
+    """
+    Convert PDF pages to images
+
+    Args:
+        pdf_path: Path to PDF file
+        start_page: Starting page number (1-indexed, inclusive)
+        end_page: Ending page number (1-indexed, inclusive)
+        dpi: DPI for rendering (default: 150, higher = better quality but slower)
+
+    Returns:
+        List of (page_number, PIL_Image) tuples
+    """
+    if not HAS_PDF:
+        raise ImportError("PyMuPDF not installed. Run: uv pip install pymupdf")
+
+    try:
+        from PIL import Image
+    except ImportError:
+        raise ImportError("Pillow not installed. Run: uv pip install pillow")
+
+    pdf_path = Path(pdf_path)
+    if not pdf_path.exists():
+        raise FileNotFoundError(f"PDF file not found: {pdf_path}")
+
+    doc = fitz.open(pdf_path)
+    total_pages = len(doc)
+
+    # Determine page range
+    if start_page is None:
+        start_page = 1
+    if end_page is None:
+        end_page = total_pages
+
+    # Validate page range
+    if start_page < 1 or start_page > total_pages:
+        raise ValueError(f"Invalid start page: {start_page} (PDF has {total_pages} pages)")
+    if end_page < start_page or end_page > total_pages:
+        raise ValueError(f"Invalid end page: {end_page} (must be >= {start_page} and <= {total_pages})")
+
+    # Convert pages to images
+    pages_images = []
+    for page_num in range(start_page - 1, end_page):  # 0-indexed internally
+        page = doc[page_num]
+        # Render page to pixmap (image)
+        pix = page.get_pixmap(dpi=dpi)
+        # Convert to PIL Image
+        img_data = pix.tobytes("ppm")
+        img = Image.frombytes("RGB", [pix.width, pix.height], img_data)
+        pages_images.append((page_num + 1, img))  # Store 1-indexed page number
+
+    doc.close()
+    return pages_images
+
+
+def pdf_mode(backend_name: str, pdf_path: str, source: str, target: str,
+             start_page: Optional[int] = None, end_page: Optional[int] = None,
+             pdf_as_image: bool = False, dpi: int = 96):
+    """PDF translation mode
+
+    Args:
+        backend_name: Backend to use (ollama, transformers, mlx)
+        pdf_path: Path to PDF file
+        source: Source language code
+        target: Target language code
+        start_page: Starting page number
+        end_page: Ending page number
+        pdf_as_image: If True, use image mode (multimodal TranslateGemma)
+    """
+    print(f"{Colors.BOLD}TranslateGemma - PDF Translation{Colors.NC}")
+
+    if pdf_as_image:
+        print(f"Mode: {Colors.YELLOW}Image (Multimodal) ⚠️  Experimental{Colors.NC}")
+        print(f"Backend: {Colors.CYAN}transformers-multimodal{Colors.NC}")
+    else:
+        print(f"Mode: {Colors.CYAN}Text{Colors.NC}")
+        print(f"Backend: {Colors.CYAN}{backend_name}{Colors.NC}")
+
+    print(f"File: {Colors.CYAN}{pdf_path}{Colors.NC}")
+    print()
+
+    # Get backend (force multimodal for image mode)
+    try:
+        if pdf_as_image:
+            from backends import TransformersMultimodalBackend
+            backend = TransformersMultimodalBackend()
+            print_info("Using multimodal backend for image translation")
+        else:
+            backend = get_backend(backend_name)
+    except ValueError as e:
+        print_error(str(e))
+        return 1
+    except ImportError as e:
+        print_error("Failed to import multimodal backend", str(e))
+        return 1
+
+    # Extract content from PDF
+    try:
+        if pdf_as_image:
+            print(f"Converting PDF pages to images (DPI: {dpi})...")
+            pages_data = pdf_pages_to_images(pdf_path, start_page, end_page, dpi=dpi)
+            print_success(f"Converted {len(pages_data)} page(s) to images")
+        else:
+            print("Extracting text from PDF...")
+            pages_data = extract_text_from_pdf(pdf_path, start_page, end_page)
+            print_success(f"Extracted text from {len(pages_data)} page(s)")
+        print()
+    except Exception as e:
+        print_error("Failed to process PDF", str(e))
+        return 1
+
+    # Load model
+    backend_display = "transformers-multimodal" if pdf_as_image else backend_name
+    print(f"Loading {backend_display} backend...")
+    result = backend.load_model()
+
+    if not result["model_loaded"]:
+        error = result.get("metadata", {}).get("error", "Unknown error")
+        print_error("Failed to load model", error)
+        return 1
+
+    print_success(
+        "Model loaded",
+        f"Time: {result['load_time']:.2f}s"
+    )
+
+    # Get backend info
+    info = backend.get_backend_info()
+    print(f"   Device: {info.get('device', 'unknown')}")
+    if pdf_as_image:
+        print(f"   Multimodal: {info.get('capabilities', 'text + image')}")
+    print()
+
+    # Translate each page
+    total_time = 0
+    total_tokens = 0
+    translated_pages = 0
+
+    for page_num, page_content in pages_data:
+        print(f"{Colors.BOLD}Page {page_num}:{Colors.NC}")
+
+        if pdf_as_image:
+            # Image mode
+            print(f"{Colors.CYAN}Translating image (size: {page_content.size})...{Colors.NC}")
+            try:
+                result = backend.translate_image(page_content, source, target)
+            except AttributeError:
+                print_error("Backend doesn't support image translation")
+                return 1
+        else:
+            # Text mode
+            # Skip empty pages
+            if not page_content.strip():
+                print(f"{Colors.YELLOW}Empty, skipped{Colors.NC}")
+                continue
+
+            print(f"{Colors.CYAN}Translating {len(page_content)} characters...{Colors.NC}")
+            result = backend.translate(page_content, source, target)
+
+        if "error" in result.get("metadata", {}):
+            print_error(f"Translation failed for page {page_num}", result["metadata"]["error"])
+            continue
+
+        # Print translation
+        print(f"{Colors.GREEN}{result['translation']}{Colors.NC}")
+        print()
+        mode_info = result['metadata'].get('mode', 'text')
+        print(f"Time: {result['time']:.2f}s, Tokens: {result['tokens']}, Speed: {result['metadata'].get('tokens_per_second', 0):.1f} tok/s, Mode: {mode_info}")
+        print()
+        print("─" * 80)
+        print()
+
+        total_time += result['time']
+        total_tokens += result['tokens']
+        translated_pages += 1
+
+    # Print summary
+    print(f"{Colors.BOLD}Summary:{Colors.NC}")
+    print(f"  Mode: {'Image (Multimodal)' if pdf_as_image else 'Text'}")
+    print(f"  Pages translated: {translated_pages}")
+    print(f"  Total time: {total_time:.2f}s")
+    print(f"  Total tokens: {total_tokens}")
+    if total_time > 0:
+        print(f"  Average speed: {total_tokens / total_time:.1f} tok/s")
+
+    # Cleanup
+    backend.cleanup()
+
+    return 0
 
 
 def one_shot_mode(backend_name: str, text: str, source: str, target: str):
@@ -267,13 +517,43 @@ def main():
     parser.add_argument(
         "--mode",
         default="one-shot",
-        choices=["one-shot", "interactive"],
+        choices=["one-shot", "interactive", "pdf"],
         help="Translation mode (default: one-shot)"
     )
 
     parser.add_argument(
         "--text",
         help="Text to translate (required for one-shot mode)"
+    )
+
+    parser.add_argument(
+        "--file",
+        help="PDF file to translate (required for pdf mode)"
+    )
+
+    parser.add_argument(
+        "--start-page",
+        type=int,
+        help="Starting page number for PDF (1-indexed, default: 1)"
+    )
+
+    parser.add_argument(
+        "--end-page",
+        type=int,
+        help="Ending page number for PDF (1-indexed, default: last page)"
+    )
+
+    parser.add_argument(
+        "--pdf-as-image",
+        action="store_true",
+        help="Use image mode for PDF (experimental, multimodal TranslateGemma)"
+    )
+
+    parser.add_argument(
+        "--dpi",
+        type=int,
+        default=96,
+        help="DPI for PDF to image conversion (default: 96, lower = faster, higher = better quality). TranslateGemma expects 896x896."
     )
 
     parser.add_argument(
@@ -294,9 +574,23 @@ def main():
     if args.mode == "one-shot" and not args.text:
         parser.error("--text is required for one-shot mode")
 
+    if args.mode == "pdf":
+        if not HAS_PDF:
+            parser.error("PDF mode requires PyMuPDF. Run: uv pip install pymupdf")
+        if not args.file:
+            parser.error("--file is required for pdf mode")
+        if args.pdf_as_image:
+            try:
+                from PIL import Image
+            except ImportError:
+                parser.error("Image mode requires Pillow. Run: uv pip install pillow")
+
     # Run appropriate mode
     if args.mode == "one-shot":
         return one_shot_mode(args.backend, args.text, args.source, args.target)
+    elif args.mode == "pdf":
+        return pdf_mode(args.backend, args.file, args.source, args.target,
+                       args.start_page, args.end_page, args.pdf_as_image, args.dpi)
     else:
         return interactive_mode(args.backend)
 

@@ -23,6 +23,8 @@ dependencies = [
 examples = [
     "python-dotenv>=1.0.0",
     "psutil>=5.9.0",
+    "pymupdf>=1.24.0",  # PDF reading support
+    "pillow>=10.0.0",   # Image processing (for PDF image mode)
 ]
 
 # For MLX backend (Apple Silicon only)

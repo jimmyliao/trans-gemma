@@ -1,6 +1,7 @@
 # Translation backends for TranslateGemma
 from .base import TranslationBackend
 from .transformers_backend import TransformersBackend
+from .transformers_multimodal_backend import TransformersMultimodalBackend
 from .ollama_backend import OllamaBackend
 
 try:
@@ -13,6 +14,7 @@ except ImportError:
 __all__ = [
     'TranslationBackend',
     'TransformersBackend',
+    'TransformersMultimodalBackend',
     'OllamaBackend',
     'MLXBackend',
     'HAS_MLX',
