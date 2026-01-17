@@ -318,12 +318,28 @@ def test_translation():
         print(f"   載入配置: device_map={device_map}, dtype={torch_dtype}")
         print()
 
-        model = AutoModelForCausalLM.from_pretrained(
-            MODEL_ID,
-            torch_dtype=torch_dtype,
-            device_map=device_map,
-            low_cpu_mem_usage=True  # 減少臨時檔案和記憶體使用
-        )
+        # 準備載入參數
+        load_kwargs = {
+            "torch_dtype": torch_dtype,
+            "low_cpu_mem_usage": True
+        }
+
+        # 如果使用 MPS，限制最大記憶體使用
+        # 可設定 NO_MEM_LIMIT=1 來完全移除記憶體限制
+        no_mem_limit = os.getenv("NO_MEM_LIMIT", "0") == "1"
+
+        if device_map == "auto" and torch.backends.mps.is_available() and not no_mem_limit:
+            # 使用 8GB 給 MPS（模型實際需求），CPU 備援 8GB
+            max_mem_gb = 8
+            load_kwargs["max_memory"] = {0: f"{max_mem_gb}GiB", "cpu": "8GiB"}
+            load_kwargs["device_map"] = "auto"
+            print(f"   {Colors.CYAN}MPS 記憶體限制: {max_mem_gb}GB (模型需求), 實際可用 {available_mem_gb:.1f}GB{Colors.NC}")
+        else:
+            load_kwargs["device_map"] = device_map
+            if no_mem_limit and device_map == "auto":
+                print(f"   {Colors.YELLOW}⚠️  無記憶體限制模式（NO_MEM_LIMIT=1）{Colors.NC}")
+
+        model = AutoModelForCausalLM.from_pretrained(MODEL_ID, **load_kwargs)
         model_load_time = time.time() - model_start_time
 
         print()
