@@ -5,36 +5,28 @@ from .base import TranslationBackend
 
 
 class MLXBackend(TranslationBackend):
-    """MLX backend for Apple Silicon"""
+    """MLX backend for Apple Silicon
+
+    Note: TranslateGemma MLX version not yet available.
+    This backend is currently disabled.
+    Use Ollama backend for best M1/M2/M3 performance.
+    """
 
     def __init__(self):
         super().__init__()
-        self.model_id = "mlx-community/translategemma-4b-it"
+        # MLX-optimized version not available yet
+        # Using standard model (will fail for now)
+        self.model_id = "google/translategemma-4b-it"
 
     def load_model(self, **kwargs) -> Dict[str, Any]:
         """Load model using MLX"""
-        try:
-            from mlx_lm import load
-        except ImportError:
-            return {
-                "model_loaded": False,
-                "load_time": 0,
-                "metadata": {"error": "mlx_lm not installed. Run: uv pip install mlx-lm"}
-            }
-
-        start_time = time.time()
-
-        self.model, self.tokenizer = load(self.model_id)
-
-        load_time = time.time() - start_time
-
+        # TranslateGemma MLX version not available yet
         return {
-            "model_loaded": True,
-            "load_time": load_time,
+            "model_loaded": False,
+            "load_time": 0,
             "metadata": {
-                "model_id": self.model_id,
-                "backend": "mlx",
-                "device": "metal"
+                "error": "TranslateGemma MLX version not yet available on Hugging Face.\n"
+                        "   Use --backend ollama for best M1/M2/M3 performance."
             }
         }
 

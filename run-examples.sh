@@ -213,6 +213,12 @@ run_with_cleanup_option() {
 
 # Main script starts here
 
+# Show help if no arguments provided
+if [ -z "$1" ]; then
+    show_help
+    exit 0
+fi
+
 # Check for help
 if [ "$1" = "help" ] || [ "$1" = "--help" ] || [ "$1" = "-h" ]; then
     show_help

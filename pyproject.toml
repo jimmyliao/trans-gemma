@@ -25,6 +25,11 @@ examples = [
     "psutil>=5.9.0",
 ]
 
+# For MLX backend (Apple Silicon only)
+mlx = [
+    "mlx-lm>=0.18.0",
+]
+
 # For Cloud Run deployment
 cloudrun = [
     "fastapi>=0.109.0",
@@ -42,9 +47,14 @@ dev = [
     "jupyter>=1.0.0",
 ]
 
-# All dependencies
+# All dependencies (excluding platform-specific mlx)
 all = [
     "trans-gemma[examples,cloudrun,dev]",
+]
+
+# Full install with MLX (for Apple Silicon)
+full = [
+    "trans-gemma[examples,cloudrun,dev,mlx]",
 ]
 
 [project.urls]
