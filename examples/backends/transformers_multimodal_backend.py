@@ -121,11 +121,11 @@ class TransformersMultimodalBackend(TranslationBackend):
                 inputs,
                 max_new_tokens=512,
                 do_sample=True,
-                temperature=0.7,
+                temperature=0.3,        # Lower for consistent language
                 repetition_penalty=1.5,
                 no_repeat_ngram_size=3,
-                top_p=0.9,
-                top_k=50
+                top_p=0.85,
+                top_k=40
             )
 
         end_time = time.time()
@@ -244,9 +244,17 @@ class TransformersMultimodalBackend(TranslationBackend):
             add_generation_prompt=True
         )
 
-        # Add explicit language instruction to the text prompt
+        # Add explicit and strong language instruction to the text prompt
         # This helps the model distinguish Traditional vs Simplified Chinese
-        text = text + f"\nTranslate the text in this image from {source_name} to {target_name}. Use {target_name} characters only."
+        # IMPORTANT: Be very explicit about the target language to prevent language mixing
+        if target_lang == "zh-TW":
+            lang_instruction = f"\n\nIMPORTANT: Translate ALL text in this image to Traditional Chinese (Taiwan, 繁體中文). DO NOT use Simplified Chinese (简体中文), Korean (한국어), or any other language. ONLY use Traditional Chinese characters (繁體字) throughout the entire translation."
+        elif target_lang == "zh-CN":
+            lang_instruction = f"\n\nIMPORTANT: Translate ALL text in this image to Simplified Chinese (简体中文). DO NOT use Traditional Chinese (繁體中文) or any other language."
+        else:
+            lang_instruction = f"\n\nIMPORTANT: Translate ALL text in this image to {target_name}. DO NOT mix with other languages. Use {target_name} only."
+
+        text = text + lang_instruction
 
         # Process both text and image
         inputs = self.processor(
@@ -275,11 +283,11 @@ class TransformersMultimodalBackend(TranslationBackend):
                 **inputs,
                 "max_new_tokens": 2048,
                 "do_sample": True,
-                "temperature": 0.7,
+                "temperature": 0.3,        # Lower temperature for more consistent language (was 0.7)
                 "repetition_penalty": 1.5,
                 "no_repeat_ngram_size": 3,
-                "top_p": 0.9,
-                "top_k": 50,
+                "top_p": 0.85,             # Slightly lower for more focused output (was 0.9)
+                "top_k": 40,               # Reduce randomness (was 50)
                 "streamer": streamer
             }
 
@@ -327,11 +335,11 @@ class TransformersMultimodalBackend(TranslationBackend):
                     **inputs,
                     max_new_tokens=2048,
                     do_sample=True,
-                    temperature=0.7,
+                    temperature=0.3,        # Lower for consistent language
                     repetition_penalty=1.5,
                     no_repeat_ngram_size=3,
-                    top_p=0.9,
-                    top_k=50
+                    top_p=0.85,
+                    top_k=40
                 )
 
             # Decode
