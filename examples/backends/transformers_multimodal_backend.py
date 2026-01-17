@@ -208,23 +208,8 @@ class TransformersMultimodalBackend(TranslationBackend):
             new_image.paste(image, (paste_x, paste_y))
             image = new_image
 
-        # Map language codes to explicit names for better recognition
-        lang_map = {
-            "zh-TW": "Traditional Chinese (Taiwan)",
-            "zh-CN": "Simplified Chinese",
-            "ja": "Japanese",
-            "ko": "Korean",
-            "en": "English",
-            "es": "Spanish",
-            "fr": "French",
-            "de": "German"
-        }
-
-        source_name = lang_map.get(source_lang, source_lang)
-        target_name = lang_map.get(target_lang, target_lang)
-
-        # Build structured message for image
-        # Include explicit text instruction to improve language recognition
+        # Just use structured message format without extra instructions
+        # TranslateGemma should understand the language codes directly
         messages = [{
             "role": "user",
             "content": [{
@@ -243,18 +228,6 @@ class TransformersMultimodalBackend(TranslationBackend):
             tokenize=False,
             add_generation_prompt=True
         )
-
-        # Add explicit and strong language instruction to the text prompt
-        # This helps the model distinguish Traditional vs Simplified Chinese
-        # IMPORTANT: Be very explicit about the target language to prevent language mixing
-        if target_lang == "zh-TW":
-            lang_instruction = f"\n\nIMPORTANT: Translate ALL text in this image to Traditional Chinese (Taiwan, 繁體中文). DO NOT use Simplified Chinese (简体中文), Korean (한국어), or any other language. ONLY use Traditional Chinese characters (繁體字) throughout the entire translation."
-        elif target_lang == "zh-CN":
-            lang_instruction = f"\n\nIMPORTANT: Translate ALL text in this image to Simplified Chinese (简体中文). DO NOT use Traditional Chinese (繁體中文) or any other language."
-        else:
-            lang_instruction = f"\n\nIMPORTANT: Translate ALL text in this image to {target_name}. DO NOT mix with other languages. Use {target_name} only."
-
-        text = text + lang_instruction
 
         # Process both text and image
         inputs = self.processor(
