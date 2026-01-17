@@ -1,6 +1,10 @@
 # TranslateGemma 範例與測試工具
 
+[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/jimmyliao/trans-gemma/blob/main/translategemma_colab.ipynb)
+
 這個目錄包含 TranslateGemma 的使用範例和測試工具。
+
+**🆕 Google Colab**: 現在可以直接在 Colab 上使用！點擊上方 badge 開啟 notebook。
 
 ## 📁 目錄結構
 
@@ -125,6 +129,9 @@ Statistics:
 # 翻譯整份 PDF（TranslateGemma 技術報告）
 ./run-examples.sh translate --mode pdf --file examples/2601.09012v2.pdf
 
+# 🆕 從 arXiv 自動下載並翻譯
+./run-examples.sh translate --mode pdf --arxiv 2601.09012v2
+
 # 翻譯特定頁面範圍
 ./run-examples.sh translate --mode pdf --file examples/2601.09012v2.pdf --start-page 1 --end-page 3
 
@@ -133,6 +140,7 @@ Statistics:
 ```
 
 **功能：**
+- ✅ **arXiv 自動下載** - 使用 arXiv ID 自動下載 PDF
 - ✅ 快速（使用現有 backend）
 - ✅ 自動提取 PDF 文字內容
 - ✅ 逐頁翻譯並顯示進度

@@ -79,6 +79,49 @@ def print_info(message):
     print(f"{Colors.BLUE}ℹ️  {message}{Colors.NC}")
 
 
+def download_arxiv_pdf(arxiv_id: str, output_dir: str = "examples") -> str:
+    """
+    Download PDF from arXiv
+
+    Args:
+        arxiv_id: arXiv ID (e.g., "2601.09012v2" or "2601.09012")
+        output_dir: Directory to save the PDF (default: "examples")
+
+    Returns:
+        Path to downloaded PDF file
+    """
+    import urllib.request
+    import os
+
+    # Clean arxiv_id (remove any "v" version suffix for URL)
+    # arXiv URL format: https://arxiv.org/pdf/2601.09012.pdf
+    base_id = arxiv_id.split('v')[0] if 'v' in arxiv_id else arxiv_id
+
+    # Construct URL
+    url = f"https://arxiv.org/pdf/{base_id}.pdf"
+
+    # Create output directory if not exists
+    os.makedirs(output_dir, exist_ok=True)
+
+    # Output file path (keep version in filename)
+    output_path = os.path.join(output_dir, f"{arxiv_id}.pdf")
+
+    # Check if already downloaded
+    if os.path.exists(output_path):
+        print_info(f"PDF already exists: {output_path}")
+        return output_path
+
+    # Download
+    print(f"Downloading from arXiv: {url}")
+    try:
+        urllib.request.urlretrieve(url, output_path)
+        print_success(f"Downloaded: {output_path}")
+        return output_path
+    except Exception as e:
+        print_error(f"Failed to download arXiv PDF: {arxiv_id}", str(e))
+        raise
+
+
 def extract_text_from_pdf(pdf_path: str, start_page: Optional[int] = None, end_page: Optional[int] = None) -> list[tuple[int, str]]:
     """
     Extract text from PDF file
@@ -528,7 +571,12 @@ def main():
 
     parser.add_argument(
         "--file",
-        help="PDF file to translate (required for pdf mode)"
+        help="PDF file to translate (required for pdf mode, mutually exclusive with --arxiv)"
+    )
+
+    parser.add_argument(
+        "--arxiv",
+        help="arXiv ID (e.g., 2601.09012v2 or 2601.09012) to download PDF automatically"
     )
 
     parser.add_argument(
@@ -577,8 +625,10 @@ def main():
     if args.mode == "pdf":
         if not HAS_PDF:
             parser.error("PDF mode requires PyMuPDF. Run: uv pip install pymupdf")
-        if not args.file:
-            parser.error("--file is required for pdf mode")
+        if not args.file and not args.arxiv:
+            parser.error("--file or --arxiv is required for pdf mode")
+        if args.file and args.arxiv:
+            parser.error("--file and --arxiv are mutually exclusive")
         if args.pdf_as_image:
             try:
                 from PIL import Image
@@ -589,7 +639,12 @@ def main():
     if args.mode == "one-shot":
         return one_shot_mode(args.backend, args.text, args.source, args.target)
     elif args.mode == "pdf":
-        return pdf_mode(args.backend, args.file, args.source, args.target,
+        # Download from arXiv if specified
+        pdf_file = args.file
+        if args.arxiv:
+            pdf_file = download_arxiv_pdf(args.arxiv)
+
+        return pdf_mode(args.backend, pdf_file, args.source, args.target,
                        args.start_page, args.end_page, args.pdf_as_image, args.dpi)
     else:
         return interactive_mode(args.backend)
