@@ -48,11 +48,13 @@ examples/
 
 ### 後端比較
 
-| 後端 | 速度 | 安裝 | 最適合 |
-|------|------|------|--------|
-| **ollama** | ⚡⚡⚡ 快 | 一行指令 | M1/M2/M3 Mac，快速測試 |
-| **mlx** | ⚡⚡⚡⚡⚡ 最快 | `uv pip install mlx-lm` | M1/M2/M3 Mac，最佳效能 |
-| **transformers** | ⚠️ 慢 | 預設 | 研究用途，完全控制 |
+| 後端 | 速度 | 安裝 | 狀態 | 最適合 |
+|------|------|------|------|--------|
+| **ollama** | ⚡⚡⚡ 快 | 一行指令 | ✅ 推薦 | M1/M2/M3 Mac，所有用途 |
+| **transformers** | ⚠️ 慢 | 預設 | ✅ 可用 | Colab/CUDA GPU，研究用途 |
+| **mlx** | - | - | ❌ 不可用 | 等待 MLX 版本模型 |
+
+**注意**: MLX 後端暫時不可用，因為 TranslateGemma 尚未有 MLX 優化版本。
 
 ### 模式
 
@@ -118,31 +120,27 @@ Statistics:
 ### 範例
 
 ```bash
-# Ollama（推薦給 M1）
+# Ollama（推薦給 M1/M2/M3 Mac）
 ./run-examples.sh translate --text "Hello!" --backend ollama
-
-# MLX（Apple Silicon 上最快）
-./run-examples.sh translate --text "Hello!" --backend mlx
 
 # Transformers 使用 CPU
 FORCE_DEVICE=cpu ./run-examples.sh translate --text "Hello!" --backend transformers
 
-# 使用不同後端的互動模式
-./run-examples.sh translate --mode interactive --backend mlx
+# 互動模式
+./run-examples.sh translate --mode interactive --backend ollama
 ```
 
 ## 🆚 效能比較（M1 Mac）
 
 基於實際測試：
 
-| 後端 | 模型載入 | 首次翻譯 | 後續翻譯 | 記憶體 |
-|------|----------|----------|----------|--------|
-| Ollama | 0.04s | 0.8s | 0.8s | 3.3 GB |
-| MLX | ~5s | ~1s | ~0.5s | ~4 GB |
-| Transformers (MPS 8GB) | 8.8s | 94.8s ⚠️ | ~10s | 8.7 GB |
-| Transformers (CPU) | ~15s | ~5min ⚠️ | ~2min | 10 GB |
+| 後端 | 模型載入 | 首次翻譯 | 記憶體 | 狀態 |
+|------|----------|----------|--------|------|
+| Ollama | 0.04s | 0.8s | 3.3 GB | ✅ 推薦 |
+| Transformers (MPS 8GB) | 8.8s | 94.8s ⚠️ | 8.7 GB | ⚠️ 太慢 |
+| Transformers (CPU) | ~15s | ~5min ⚠️ | 10 GB | ⚠️ 非常慢 |
 
-**結論**：**在 M1 Mac 上使用 Ollama 或 MLX**。Transformers 太慢不實用。
+**結論**：**在 M1 Mac 上使用 Ollama**。Transformers 太慢不實用。
 
 ## 📝 其他範例
 
@@ -251,15 +249,17 @@ messages = [
 ollama pull translategemma
 ```
 
-### MLX: Not installed
+### MLX: Backend not available
+
+MLX 後端目前不可用，因為 TranslateGemma 尚未有 MLX 優化版本。請使用 Ollama 後端：
 
 ```bash
-uv pip install mlx-lm
+./run-examples.sh translate --text "Hello!" --backend ollama
 ```
 
-### Transformers: Invalid buffer size
+### Transformers: Invalid buffer size (M1 Mac)
 
-在 M1 Mac 上請改用 Ollama 或 MLX。Transformers 在 MPS 上有記憶體管理問題。
+在 M1 Mac 上請改用 Ollama。Transformers 在 MPS 上有記憶體管理問題，效能也較差。
 
 ## 📝 .env 檔案設定
 
@@ -295,9 +295,9 @@ MODEL_ID=google/translategemma-4b-it
 ### Q: 應該使用哪個後端？
 
 A:
-- **M1/M2/M3 Mac**: 使用 Ollama（簡單）或 MLX（最快）
-- **NVIDIA GPU**: 使用 Transformers
-- **CPU only**: 使用 Ollama（較穩定）
+- **M1/M2/M3 Mac**: 使用 Ollama（推薦）
+- **Google Colab / NVIDIA GPU**: 使用 Transformers
+- **CPU only**: 使用 Ollama（如已安裝）或 Transformers CPU 模式
 
 ### Q: Ollama 會使用 GPU 嗎？
 
