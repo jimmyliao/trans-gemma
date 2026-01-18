@@ -35,8 +35,34 @@ TranslateGemma 是 **gated repository**，使用前需要：
 
 ### 選項 1: Google Colab（推薦）
 
+我們提供兩個 Colab notebooks，依據使用場景選擇：
+
+#### 📖 arXiv 雙語閱讀版（研究者/學生專用）
+
+[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/jimmyliao/trans-gemma/blob/main/arxiv-reader-colab.ipynb)
+
+**專注於學術論文雙語閱讀**：
+- ✅ 雙語對照預設啟用（學習英文學術寫作）
+- ✅ 智慧混合模式（自動處理圖表頁面）
+- ✅ 分章節翻譯（Abstract、Method、Experiments）
+- ✅ 自動生成術語對照表
+
+**適合**：深入研讀論文、學習專業術語、準備寫作/審稿
+
+#### 🔧 通用文件翻譯版
+
 [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/jimmyliao/trans-gemma/blob/main/document-translator-colab.ipynb)
 
+**支援多種檔案類型**：
+- 📄 PDF 翻譯（arXiv、上傳、圖片模式）
+- 🖼️ 圖片翻譯（菜單、海報、截圖）
+- 🌐 網頁翻譯（文章抓取、截圖）
+
+**適合**：一般翻譯需求、多種檔案格式
+
+---
+
+**使用步驟**（兩個 notebook 都適用）：
 1. **完成上方的 Hugging Face 存取申請**
 2. 點擊按鈕在 Colab 中開啟 notebook
 3. 確認 GPU 已啟用（Runtime > Change runtime type > T4 GPU）
