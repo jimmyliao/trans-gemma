@@ -112,11 +112,11 @@ class TransformersBackend(TranslationBackend):
 
         start_time = time.time()
 
-        # Generate
+        # Generate (increased max_new_tokens to avoid truncation)
         with torch.no_grad():
             outputs = self.model.generate(
                 inputs,
-                max_new_tokens=256,
+                max_new_tokens=2048,  # Increased from 256 to avoid truncation
                 do_sample=False
             )
 
@@ -149,11 +149,17 @@ class TransformersBackend(TranslationBackend):
         # Post-processing: Convert Simplified to Traditional Chinese if needed
         if target_lang == "zh-TW":
             try:
-                from hanziconv import HanziConv
-                translation = HanziConv.toTraditional(translation)
+                from opencc import OpenCC
+                cc = OpenCC('s2twp')  # Simplified to Traditional (Taiwan phrases)
+                translation = cc.convert(translation)
             except ImportError:
-                # hanziconv not installed, skip conversion
-                pass
+                # Fallback to hanziconv if OpenCC not available
+                try:
+                    from hanziconv import HanziConv
+                    translation = HanziConv.toTraditional(translation)
+                except ImportError:
+                    # Neither installed, skip conversion
+                    pass
 
         # Calculate tokens
         input_tokens = inputs.shape[1]
