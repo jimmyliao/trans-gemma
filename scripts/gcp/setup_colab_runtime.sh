@@ -8,9 +8,14 @@ echo "=================================="
 echo "Setting up Colab Runtime on VM"
 echo "=================================="
 
+# Install Python and system dependencies
+echo "📦 Installing Python and system dependencies..."
+sudo apt-get update
+sudo apt-get install -y python3 python3-pip python3-venv git curl
+
 # Install required packages
-echo "📦 Installing dependencies..."
-pip install --upgrade pip
+echo "📦 Installing Python packages..."
+python3 -m pip install --upgrade pip
 pip install jupyter notebook jupyter_http_over_ws
 pip install uv
 
