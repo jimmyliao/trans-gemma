@@ -1,6 +1,6 @@
 """Ollama backend for TranslateGemma"""
-import subprocess
 import time
+import os
 from typing import Dict, Any
 
 try:
@@ -10,140 +10,88 @@ except ImportError:
 
 
 class OllamaBackend(TranslationBackend):
-    """Ollama backend using ollama CLI"""
+    """Ollama backend for local inference"""
 
     def __init__(self):
         super().__init__()
         self.model_name = "translategemma:latest"
+        self.base_url = "http://localhost:11434"
 
     def load_model(self, **kwargs) -> Dict[str, Any]:
-        """Check if Ollama model is available"""
+        """Check if Ollama is running and model is available"""
+        import requests
+
         start_time = time.time()
 
         try:
-            # Check if ollama is installed
-            result = subprocess.run(
-                ["ollama", "list"],
-                capture_output=True,
-                text=True,
-                check=True
-            )
+            # Check Ollama server
+            response = requests.get(f"{self.base_url}/api/tags", timeout=5)
+            if response.status_code != 200:
+                raise RuntimeError("Ollama server not running")
 
-            # Check if translategemma is installed
-            if "translategemma" not in result.stdout:
-                print("⚠️  TranslateGemma not found in Ollama")
-                print("   Run: ollama pull translategemma")
-                return {
-                    "model_loaded": False,
-                    "load_time": 0,
-                    "metadata": {"error": "Model not found"}
-                }
+            # Check if model is available
+            models = response.json().get("models", [])
+            model_names = [m["name"] for m in models]
+
+            if not any("translategemma" in name for name in model_names):
+                raise RuntimeError(
+                    "TranslateGemma not found. Run: ollama pull translategemma"
+                )
 
             load_time = time.time() - start_time
-            self.model = True  # Mark as loaded
 
             return {
                 "model_loaded": True,
                 "load_time": load_time,
                 "metadata": {
-                    "model_name": self.model_name,
                     "backend": "ollama",
-                    "device": "metal"  # Ollama uses Metal on M1
+                    "model": self.model_name
                 }
             }
 
-        except FileNotFoundError:
-            return {
-                "model_loaded": False,
-                "load_time": 0,
-                "metadata": {"error": "Ollama not installed"}
-            }
         except Exception as e:
-            return {
-                "model_loaded": False,
-                "load_time": 0,
-                "metadata": {"error": str(e)}
-            }
+            raise RuntimeError(f"Ollama error: {e}")
 
-    def translate(
-        self,
-        text: str,
-        source_lang: str = "en",
-        target_lang: str = "zh-TW"
-    ) -> Dict[str, Any]:
-        """Translate using Ollama CLI"""
+    def translate(self, text: str, source_lang: str = "en", target_lang: str = "zh-TW") -> Dict[str, Any]:
+        """Translate using Ollama"""
+        import requests
 
-        # Map language codes to full names for better prompt
-        lang_names = {
-            "en": "English",
-            "zh-TW": "Traditional Chinese",
-            "zh-CN": "Simplified Chinese",
-            "ja": "Japanese",
-            "ko": "Korean",
-            "es": "Spanish",
-            "fr": "French",
-            "de": "German"
-        }
-
-        target_name = lang_names.get(target_lang, target_lang)
-        prompt = f"Translate this to {target_name}: {text}"
+        prompt = f"Translate from {source_lang} to {target_lang}:\n\n{text}"
 
         start_time = time.time()
 
-        try:
-            result = subprocess.run(
-                ["ollama", "run", self.model_name, prompt],
-                capture_output=True,
-                text=True,
-                check=True
-            )
+        response = requests.post(
+            f"{self.base_url}/api/generate",
+            json={
+                "model": self.model_name,
+                "prompt": prompt,
+                "stream": False,
+                "options": {"temperature": 0, "num_predict": 512}
+            },
+            timeout=120
+        )
 
-            translation = result.stdout.strip()
-            # Remove ANSI escape codes if any
-            import re
-            translation = re.sub(r'\x1b\[[0-9;]*[a-zA-Z]', '', translation)
-            translation = re.sub(r'\[\?.*?[a-zA-Z]', '', translation)
-            translation = translation.strip()
+        result = response.json()
+        translation = result.get("response", "").strip()
+        duration = time.time() - start_time
 
-            end_time = time.time()
-            duration = end_time - start_time
-
-            # Estimate tokens (rough approximation)
-            tokens = len(translation.split()) + len(text.split())
-
-            return {
-                "translation": translation,
-                "time": duration,
-                "tokens": tokens,
-                "metadata": {
-                    "tokens_per_second": tokens / duration if duration > 0 else 0,
-                    "prompt": prompt
-                }
-            }
-
-        except Exception as e:
-            return {
-                "translation": "",
-                "time": 0,
-                "tokens": 0,
-                "metadata": {"error": str(e)}
-            }
-
-    def get_backend_info(self) -> Dict[str, str]:
-        """Get Ollama backend info"""
-        try:
-            result = subprocess.run(
-                ["ollama", "--version"],
-                capture_output=True,
-                text=True
-            )
-            version = result.stdout.strip() if result.returncode == 0 else "unknown"
-        except:
-            version = "unknown"
+        # Convert to Traditional Chinese
+        if target_lang == "zh-TW":
+            try:
+                from hanziconv import HanziConv
+                translation = HanziConv.toTraditional(translation)
+            except:
+                pass
 
         return {
-            "name": "Ollama",
-            "version": version,
-            "device": "metal",
-            "model": self.model_name
+            "translation": translation,
+            "time": duration,
+            "tokens": result.get("eval_count", 0),
+            "metadata": {"tokens_per_second": result.get("eval_count", 0) / duration if duration > 0 else 0}
         }
+
+    def get_backend_info(self) -> Dict[str, str]:
+        return {"name": "Ollama", "model": self.model_name}
+
+    def cleanup(self):
+        pass

@@ -137,29 +137,8 @@ class TransformersBackend(TranslationBackend):
             print(full_output[-500:])  # Last 500 chars
             print(f"{'='*80}\n")
 
-        # Extract translation with improved logic
-        # Try multiple strategies to extract the actual translation
-
-        # Strategy 1: Split by double newline (often separates prompt from response)
-        if '\n\n' in full_output:
-            parts = full_output.split('\n\n')
-            translation = parts[-1].strip()
-        else:
-            # Strategy 2: Take everything after last newline
-            translation = full_output.split('\n')[-1].strip()
-
-        # Strategy 3: If there's a colon in the last line, take content after it
-        if ':' in translation and len(translation.split(':', 1)) > 1:
-            potential_trans = translation.split(':', 1)[1].strip()
-            # Only use this if it's not empty
-            if potential_trans:
-                translation = potential_trans
-
-        # Fallback: if translation is suspiciously short or empty, use full output
-        if not translation or len(translation) < 10:
-            # Remove input text from output
-            # The input is usually at the beginning
-            translation = full_output.strip()
+        # Extract translation with robust multi-strategy logic
+        translation = self._extract_translation(full_output, source_lang, target_lang)
 
         # Debug: Print extracted translation
         if os.getenv('TRANSLATE_DEBUG'):
@@ -191,6 +170,125 @@ class TransformersBackend(TranslationBackend):
                 "tokens_per_second": total_tokens / duration if duration > 0 else 0
             }
         }
+
+    def _extract_translation(self, full_output: str, source_lang: str, target_lang: str) -> str:
+        """
+        Extract translation from model output using multiple fallback strategies
+
+        Args:
+            full_output: Full decoded output from model
+            source_lang: Source language code
+            target_lang: Target language code
+
+        Returns:
+            Extracted translation text
+        """
+        import re
+
+        # Strategy 1: Remove prompt template if present
+        # TranslateGemma sometimes includes the full prompt in output
+        if 'user' in full_output or 'You are a professional' in full_output:
+            # Pattern 1: Remove everything up to the actual translation
+            patterns = [
+                r'user\n.*?(?:Please translate.*?:?\s*\n+)',  # user\n...Please translate...:
+                r'You are a professional.*?(?:into|to).*?:?\s*\n+',  # You are a professional...into Chinese:
+                r'^.*?Please translate the following.*?:?\s*\n+',  # Please translate the following...:
+            ]
+
+            for pattern in patterns:
+                match = re.search(pattern, full_output, re.DOTALL | re.IGNORECASE)
+                if match:
+                    # Take everything after the match
+                    candidate = full_output[match.end():].strip()
+                    # Remove the source text if it appears at the start
+                    lines = candidate.split('\n')
+                    if len(lines) > 1:
+                        # Try to find where translation starts (usually after source text)
+                        for i, line in enumerate(lines):
+                            if self._looks_like_target_language(line, target_lang):
+                                translation = '\n'.join(lines[i:]).strip()
+                                if len(translation) > 10:
+                                    return translation
+                    elif self._looks_like_target_language(candidate, target_lang):
+                        return candidate
+
+        # Strategy 2: Split by double newline and find target language part
+        if '\n\n' in full_output:
+            parts = [p.strip() for p in full_output.split('\n\n') if p.strip()]
+            # Try to find the part that looks like target language
+            for part in reversed(parts):  # Start from the end
+                if self._looks_like_target_language(part, target_lang) and len(part) > 10:
+                    return part
+
+        # Strategy 3: Check for labeled output (e.g., "Translation: xxx")
+        if ':' in full_output:
+            lines = full_output.split('\n')
+            for i, line in enumerate(lines):
+                if ':' in line and len(line.split(':', 1)) > 1:
+                    label, content = line.split(':', 1)
+                    # Check if label suggests this is the translation
+                    if any(keyword in label.lower() for keyword in ['translation', 'output', 'result']):
+                        # Take this line and all following lines
+                        remaining = '\n'.join(lines[i:])
+                        content = remaining.split(':', 1)[1].strip()
+                        if len(content) > 10:
+                            return content
+
+        # Strategy 4: Take the last substantial line/paragraph
+        lines = [l.strip() for l in full_output.split('\n') if l.strip()]
+        if lines:
+            # Get the last line that's substantial enough
+            for line in reversed(lines):
+                if len(line) > 10 and self._looks_like_target_language(line, target_lang):
+                    return line
+            # Fallback: just take the last line
+            if len(lines[-1]) > 10:
+                return lines[-1]
+
+        # Last resort: return full output (cleaned)
+        return full_output.strip()
+
+    def _looks_like_target_language(self, text: str, lang_code: str) -> bool:
+        """
+        Heuristic to check if text appears to be in the target language
+
+        Args:
+            text: Text to check
+            lang_code: Language code (e.g., 'zh-TW', 'en', 'ja')
+
+        Returns:
+            True if text appears to be in target language
+        """
+        if not text or len(text) < 3:
+            return False
+
+        # Chinese (Traditional or Simplified)
+        if lang_code.startswith('zh'):
+            # Check for CJK Unified Ideographs
+            cjk_count = sum(1 for c in text if '\u4e00' <= c <= '\u9fff')
+            return cjk_count > len(text) * 0.2  # At least 20% CJK
+
+        # Japanese
+        elif lang_code == 'ja':
+            # Hiragana, Katakana, or Kanji
+            jp_count = sum(1 for c in text if
+                          ('\u3040' <= c <= '\u309f') or  # Hiragana
+                          ('\u30a0' <= c <= '\u30ff') or  # Katakana
+                          ('\u4e00' <= c <= '\u9fff'))    # Kanji
+            return jp_count > len(text) * 0.15
+
+        # Korean
+        elif lang_code == 'ko':
+            kr_count = sum(1 for c in text if '\uac00' <= c <= '\ud7af')  # Hangul
+            return kr_count > len(text) * 0.2
+
+        # English and Latin-script languages
+        elif lang_code in ['en', 'de', 'fr', 'es', 'it', 'pt', 'nl']:
+            ascii_count = sum(1 for c in text if ord(c) < 128)
+            return ascii_count > len(text) * 0.7
+
+        # Default: can't determine, assume it could be the target
+        return True
 
     def get_backend_info(self) -> Dict[str, str]:
         """Get transformers backend info"""
