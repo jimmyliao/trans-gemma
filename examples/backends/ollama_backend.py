@@ -56,7 +56,11 @@ class OllamaBackend(TranslationBackend):
         """Translate using Ollama"""
         import requests
 
-        prompt = f"Translate from {source_lang} to {target_lang}:\n\n{text}"
+        # Optimize prompt for Traditional Chinese (Taiwan)
+        if target_lang == "zh-TW":
+            prompt = f"Translate the following text from {source_lang} to Traditional Chinese (Taiwan, 繁體中文):\n\n{text}"
+        else:
+            prompt = f"Translate from {source_lang} to {target_lang}:\n\n{text}"
 
         start_time = time.time()
 
@@ -66,22 +70,31 @@ class OllamaBackend(TranslationBackend):
                 "model": self.model_name,
                 "prompt": prompt,
                 "stream": False,
-                "options": {"temperature": 0, "num_predict": 512}
+                "options": {
+                    "temperature": 0,
+                    "num_predict": 2048  # Increased from 512 to avoid truncation
+                }
             },
-            timeout=120
+            timeout=180  # Increased timeout for longer translations
         )
 
         result = response.json()
         translation = result.get("response", "").strip()
         duration = time.time() - start_time
 
-        # Convert to Traditional Chinese
+        # Convert to Traditional Chinese with OpenCC (more robust than hanziconv)
         if target_lang == "zh-TW":
             try:
-                from hanziconv import HanziConv
-                translation = HanziConv.toTraditional(translation)
-            except:
-                pass
+                from opencc import OpenCC
+                cc = OpenCC('s2twp')  # Simplified to Traditional (Taiwan phrases)
+                translation = cc.convert(translation)
+            except ImportError:
+                # Fallback to hanziconv if OpenCC not available
+                try:
+                    from hanziconv import HanziConv
+                    translation = HanziConv.toTraditional(translation)
+                except:
+                    pass
 
         return {
             "translation": translation,
