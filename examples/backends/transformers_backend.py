@@ -93,22 +93,19 @@ class TransformersBackend(TranslationBackend):
         """Translate using transformers"""
         import torch
 
-        # Build structured message
-        messages = [{
-            "role": "user",
-            "content": [{
-                "type": "text",
-                "text": text,
-                "source_lang_code": source_lang,
-                "target_lang_code": target_lang
-            }]
-        }]
+        # Use simple direct prompt (more reliable than chat template)
+        if target_lang == "zh-TW":
+            prompt = f"Translate the following text from {source_lang} to Traditional Chinese (Taiwan, 繁體中文). Only output the translation, do not include any explanations:\n\n{text}\n\nTranslation:"
+        else:
+            prompt = f"Translate the following text from {source_lang} to {target_lang}. Only output the translation:\n\n{text}\n\nTranslation:"
 
-        # Apply chat template
-        inputs = self.tokenizer.apply_chat_template(
-            messages,
-            return_tensors="pt"
-        ).to(self.model.device)
+        # Tokenize
+        inputs = self.tokenizer(
+            prompt,
+            return_tensors="pt",
+            truncation=True,
+            max_length=2048
+        ).input_ids.to(self.model.device)
 
         start_time = time.time()
 
@@ -137,8 +134,12 @@ class TransformersBackend(TranslationBackend):
             print(full_output[-500:])  # Last 500 chars
             print(f"{'='*80}\n")
 
-        # Extract translation with robust multi-strategy logic
-        translation = self._extract_translation(full_output, source_lang, target_lang)
+        # Extract translation - with simple prompt, output should be cleaner
+        # Remove the prompt if it appears in output
+        if "Translation:" in full_output:
+            translation = full_output.split("Translation:")[-1].strip()
+        else:
+            translation = self._extract_translation(full_output, source_lang, target_lang)
 
         # Debug: Print extracted translation
         if os.getenv('TRANSLATE_DEBUG'):
