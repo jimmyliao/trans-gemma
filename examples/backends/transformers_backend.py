@@ -126,10 +126,46 @@ class TransformersBackend(TranslationBackend):
         # Decode
         full_output = self.tokenizer.decode(outputs[0], skip_special_tokens=True)
 
-        # Extract translation (after last newline or colon)
-        translation = full_output.split('\n')[-1].strip()
-        if ':' in translation:
-            translation = translation.split(':', 1)[1].strip()
+        # Debug: Print full output if DEBUG env var is set
+        import os
+        if os.getenv('TRANSLATE_DEBUG'):
+            print(f"\n{'='*80}")
+            print(f"FULL OUTPUT ({len(full_output)} chars):")
+            print(f"{'='*80}")
+            print(full_output[:500])  # First 500 chars
+            print(f"\n... [truncated] ...\n")
+            print(full_output[-500:])  # Last 500 chars
+            print(f"{'='*80}\n")
+
+        # Extract translation with improved logic
+        # Try multiple strategies to extract the actual translation
+
+        # Strategy 1: Split by double newline (often separates prompt from response)
+        if '\n\n' in full_output:
+            parts = full_output.split('\n\n')
+            translation = parts[-1].strip()
+        else:
+            # Strategy 2: Take everything after last newline
+            translation = full_output.split('\n')[-1].strip()
+
+        # Strategy 3: If there's a colon in the last line, take content after it
+        if ':' in translation and len(translation.split(':', 1)) > 1:
+            potential_trans = translation.split(':', 1)[1].strip()
+            # Only use this if it's not empty
+            if potential_trans:
+                translation = potential_trans
+
+        # Fallback: if translation is suspiciously short or empty, use full output
+        if not translation or len(translation) < 10:
+            # Remove input text from output
+            # The input is usually at the beginning
+            translation = full_output.strip()
+
+        # Debug: Print extracted translation
+        if os.getenv('TRANSLATE_DEBUG'):
+            print(f"EXTRACTED TRANSLATION ({len(translation)} chars):")
+            print(translation[:200])
+            print(f"\n{'='*80}\n")
 
         # Post-processing: Convert Simplified to Traditional Chinese if needed
         if target_lang == "zh-TW":
